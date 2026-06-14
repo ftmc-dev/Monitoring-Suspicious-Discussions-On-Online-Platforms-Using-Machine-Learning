@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hate Speech Detection System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-bottom: 1px solid #1e3a5f;
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo-section h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #38bdf8;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-section p {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #0f2d1f;
+    border: 1px solid #166534;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #4ade80;
+    font-weight: 500;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background: #4ade80;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Main Layout ── */
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* ── Project Info ── */
+  .project-info {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    text-align: center;
+  }
+
+  .info-item label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .info-item span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+
+  /* ── Detection Card ── */
+  .detection-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+  }
+
+  .detection-card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .detection-card h2::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: #38bdf8;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  textarea {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 16px;
+    color: #e2e8f0;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 120px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  textarea:focus {
+    border-color: #38bdf8;
+  }
+
+  textarea::placeholder { color: #475569; }
+
+  .char-count {
+    text-align: right;
+    font-size: 11px;
+    color: #475569;
+    margin-top: 6px;
+    margin-bottom: 16px;
+  }
+
+  .analyze-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .analyze-btn:hover {
+    background: linear-gradient(135deg, #0369a1, #075985);
+    transform: translateY(-1px);
+  }
+
+  .analyze-btn:disabled {
+    background: #334155;
+    color: #64748b;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── Result ── */
+  .result-box {
+    margin-top: 24px;
+    border-radius: 12px;
+    padding: 24px;
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-box.normal {
+    background: #0f2d1f;
+    border: 1px solid #166534;
+  }
+
+  .result-box.offensive {
+    background: #2d1f0a;
+    border: 1px solid #92400e;
+  }
+
+  .result-box.hate_speech {
+    background: #2d0f0f;
+    border: 1px solid #991b1b;
+  }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .result-icon {
+    font-size: 36px;
+    line-height: 1;
+  }
+
+  .result-title {
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .result-box.normal .result-title { color: #4ade80; }
+  .result-box.offensive .result-title { color: #fbbf24; }
+  .result-box.hate_speech .result-title { color: #f87171; }
+
+  .result-subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  .result-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #334155;
+  }
+
+  .detail-item label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .detail-item span {
+    font-size: 13px;
+    color: #cbd5e1;
+    word-break: break-all;
+  }
+
+  /* ── Batch Section ── */
+  .batch-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+  }
+
+  .batch-card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .batch-card h2::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: #a78bfa;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .batch-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 20px;
+  }
+
+  .batch-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 16px;
+  }
+
+  .batch-btn:hover {
+    background: linear-gradient(135deg, #6d28d9, #5b21b6);
+    transform: translateY(-1px);
+  }
+
+  .batch-results {
+    margin-top: 20px;
+    display: none;
+  }
+
+  .batch-summary {
+    background: #0f172a;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+  }
+
+  .batch-stat {
+    text-align: center;
+  }
+
+  .batch-stat .num {
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .batch-stat .lbl {
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .batch-stat.normal .num { color: #4ade80; }
+  .batch-stat.offensive .num { color: #fbbf24; }
+  .batch-stat.hate .num { color: #f87171; }
+
+  .batch-item {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-left: 3px solid;
+  }
+
+  .batch-item.normal { border-color: #4ade80; }
+  .batch-item.offensive { border-color: #fbbf24; }
+  .batch-item.hate_speech { border-color: #f87171; }
+
+  .batch-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    min-width: 90px;
+  }
+
+  .batch-item.normal .batch-label { color: #4ade80; }
+  .batch-item.offensive .batch-label { color: #fbbf24; }
+  .batch-item.hate_speech .batch-label { color: #f87171; }
+
+  .batch-text {
+    font-size: 13px;
+    color: #94a3b8;
+    flex: 1;
+  }
+
+  /* ── How it works ── */
+  .how-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 32px;
+  }
+
+  .how-card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .how-card h2::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: #34d399;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .step {
+    text-align: center;
+    padding: 16px 8px;
+    background: #0f172a;
+    border-radius: 10px;
+  }
+
+  .step-icon { font-size: 28px; margin-bottom: 8px; }
+
+  .step-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 4px;
+  }
+
+  .step-desc {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  /* ── Loading ── */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    color: #64748b;
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #334155;
+    border-top-color: #38bdf8;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 24px;
+    color: #475569;
+    font-size: 12px;
+    border-top: 1px solid #1e293b;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-section">
+    <h1>🛡️ Hate Speech Detection System</h1>
+    <p>Monitoring Suspicious Discussions on Online Platforms Using ML</p>
+  </div>
+  <div class="status-badge">
+    <div class="status-dot"></div>
+    API Online
+  </div>
+</header>
+
+<main>
+
+  <!-- Project Info -->
+  <div class="project-info">
+    <div class="info-item">
+      <label>Model</label>
+      <span>SVM Linear + TF-IDF</span>
+    </div>
+    <div class="info-item">
+      <label>Training Data</label>
+      <span>3,477 Reddit Comments</span>
+    </div>
+    <div class="info-item">
+      <label>Authors</label>
+      <span>Fongang & Fosso Temfack</span>
+    </div>
+  </div>
+
+  <!-- Single Detection -->
+  <div class="detection-card">
+    <h2>Analyze a Comment</h2>
+
+    <textarea id="commentInput"
+      placeholder="Type or paste a comment here to analyze..."
+      oninput="updateCount()"></textarea>
+    <div class="char-count"><span id="charCount">0</span> characters</div>
+
+    <button class="analyze-btn" id="analyzeBtn" onclick="analyzeComment()">
+      🔍 Analyze Comment
+    </button>
+
+    <div class="loading" id="loading">
+      <span class="spinner"></span> Analyzing...
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <div class="result-header">
+        <div class="result-icon" id="resultIcon"></div>
+        <div>
+          <div class="result-title" id="resultTitle"></div>
+          <div class="result-subtitle" id="resultSubtitle"></div>
+        </div>
+      </div>
+      <div class="result-details">
+        <div class="detail-item">
+          <label>Original Text</label>
+          <span id="resultOriginal"></span>
+        </div>
+        <div class="detail-item">
+          <label>Preprocessed Text</label>
+          <span id="resultPreprocessed"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Detection -->
+  <div class="batch-card">
+    <h2>Batch Analysis</h2>
+    <p class="batch-subtitle">Analyze multiple comments at once — one comment per line</p>
+
+    <textarea id="batchInput" style="min-height:140px"
+      placeholder="Comment 1&#10;Comment 2&#10;Comment 3&#10;..."></textarea>
+
+    <button class="batch-btn" onclick="analyzeBatch()">
+      📊 Analyze All Comments
+    </button>
+
+    <div class="batch-results" id="batchResults">
+      <div class="batch-summary" id="batchSummary"></div>
+      <div id="batchList"></div>
+    </div>
+  </div>
+
+  <!-- How It Works -->
+  <div class="how-card">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-icon">📝</div>
+        <div class="step-title">Input Text</div>
+        <div class="step-desc">Raw comment from online platform</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">⚙️</div>
+        <div class="step-title">Preprocessing</div>
+        <div class="step-desc">7-step cleaning pipeline</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">🔢</div>
+        <div class="step-title">TF-IDF</div>
+        <div class="step-desc">5,000 feature vectors</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">🤖</div>
+        <div class="step-title">SVM Model</div>
+        <div class="step-desc">Binary classification output</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  IUC — SEAS — Computer Science Engineering | Fullstack Development Track | 2025–2026
+</footer>
+
+<script>
+const API = 'http://127.0.0.1:5000';
+
+function updateCount() {
+  const text = document.getElementById('commentInput').value;
+  document.getElementById('charCount').textContent = text.length;
+}
+
+async function analyzeComment() {
+  const text = document.getElementById('commentInput').value.trim();
+  if (!text) { alert('Please enter a comment to analyze.'); return; }
+
+  const btn = document.getElementById('analyzeBtn');
+  const loading = document.getElementById('loading');
+  const resultBox = document.getElementById('resultBox');
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+  resultBox.style.display = 'none';
+
+  try {
+    const response = await fetch(`${API}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    const data = await response.json();
+    showResult(data);
+  } catch (err) {
+    alert('Cannot connect to API. Make sure api.py is running.');
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function showResult(data) {
+  const box = document.getElementById('resultBox');
+  const icon = document.getElementById('resultIcon');
+  const title = document.getElementById('resultTitle');
+  const subtitle = document.getElementById('resultSubtitle');
+
+  box.className = 'result-box ' + data.label;
+
+  const config = {
+    normal: {
+      icon: '✅',
+      title: 'NORMAL',
+      subtitle: 'This comment does not contain suspicious content.'
+    },
+    offensive: {
+      icon: '⚠️',
+      title: 'OFFENSIVE',
+      subtitle: 'This comment contains offensive or rude language.'
+    },
+    hate_speech: {
+      icon: '🚨',
+      title: 'HATE SPEECH',
+      subtitle: 'This comment contains hate speech targeting a group.'
+    }
+  };
+
+  const c = config[data.label] || config.normal;
+  icon.textContent = c.icon;
+  title.textContent = c.title;
+  subtitle.textContent = c.subtitle;
+
+  document.getElementById('resultOriginal').textContent = data.original_text;
+  document.getElementById('resultPreprocessed').textContent =
+    data.preprocessed_text || '(empty after preprocessing)';
+
+  box.style.display = 'block';
+}
+
+async function analyzeBatch() {
+  const raw = document.getElementById('batchInput').value.trim();
+  if (!raw) { alert('Please enter at least one comment.'); return; }
+
+  const texts = raw.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+  if (texts.length === 0) { alert('No valid comments found.'); return; }
+  if (texts.length > 100) { alert('Maximum 100 comments at once.'); return; }
+
+  try {
+    const response = await fetch(`${API}/predict/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts })
+    });
+
+    const data = await response.json();
+    showBatchResults(data);
+  } catch (err) {
+    alert('Cannot connect to API. Make sure api.py is running.');
+  }
+}
+
+function showBatchResults(data) {
+  const results = data.results;
+  const counts = { normal: 0, offensive: 0, hate_speech: 0 };
+  results.forEach(r => counts[r.label]++);
+
+  document.getElementById('batchSummary').innerHTML = `
+    <div class="batch-stat normal">
+      <div class="num">${counts.normal}</div>
+      <div class="lbl">Normal</div>
+    </div>
+    <div class="batch-stat offensive">
+      <div class="num">${counts.offensive}</div>
+      <div class="lbl">Offensive</div>
+    </div>
+    <div class="batch-stat hate">
+      <div class="num">${counts.hate_speech}</div>
+      <div class="lbl">Hate Speech</div>
+    </div>
+  `;
+
+  const list = document.getElementById('batchList');
+  list.innerHTML = results.map(r => `
+    <div class="batch-item ${r.label}">
+      <span class="batch-label">${r.label.replace('_', ' ')}</span>
+      <span class="batch-text">${r.original_text.substring(0, 100)}${r.original_text.length > 100 ? '...' : ''}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('batchResults').style.display = 'block';
+}
+
+// Allow Enter key to trigger analysis
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'Enter') analyzeComment();
+});
+</script>
+</body>
+</html>
