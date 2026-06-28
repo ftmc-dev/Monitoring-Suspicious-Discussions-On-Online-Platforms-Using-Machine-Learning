@@ -494,6 +494,7 @@ class Pdb(OldPdb):
             chain. Exceptions will be numbered, with the current exception indicated
             with an arrow.
             If given an integer as argument, switch to the exception at that index.
+            ``exception`` can be used as an alias for this command.
             """
             if not self._chained_exceptions:
                 self.message(
@@ -538,6 +539,18 @@ class Pdb(OldPdb):
             Alias for the ``exceptions`` command.
             """
             return self.do_exceptions(arg)
+
+    def _cmdloop(self):
+        # Override to bypass Python 3.15's _maybe_use_pyrepl_as_stdin(), which
+        # sets use_rawinput=False and conflicts with IPython's own input handling.
+        while True:
+            try:
+                self.allow_kbdint = True
+                self.cmdloop()
+                self.allow_kbdint = False
+                break
+            except KeyboardInterrupt:
+                self.message("--KeyboardInterrupt--")
 
     def interaction(self, frame, tb_or_exc):
         try:
@@ -619,6 +632,19 @@ class Pdb(OldPdb):
         frame, lineno = frame_lineno
         filename = frame.f_code.co_filename
         self.shell.hooks.synchronize_with_editor(filename, lineno, 0)
+
+    def _pdbcmd_print_frame_status(self, arg):
+        """Use print_stack_entry to print frames in Python 3.14+."""
+        if sys.version_info[:2] >= (3, 14):
+            # This is the only line changed from the base class.
+            self.print_stack_entry(self.stack[self.curindex])
+
+            # Same as in 3.14
+            self._validate_file_mtime()
+            self._show_display()
+        else:
+            # 3.13 and 3.12 don't need any changes.
+            super()._pdbcmd_print_frame_status(arg) # type: ignore[misc]
 
     def _get_frame_locals(self, frame):
         """ "

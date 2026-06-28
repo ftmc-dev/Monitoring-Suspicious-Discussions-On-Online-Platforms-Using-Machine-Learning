@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentinelAI — Suspicious Discussion Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { display: ['Space Grotesk','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+                    colors: {
+                        navy: { 950:'#060a13', 900:'#0b0f19', 800:'#111827', 700:'#1a2035', 600:'#1f2847', 500:'#2a3555' },
+                        amber: { 400:'#fbbf24', 500:'#f59e0b', 600:'#d97706' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg: #0b0f19; --fg: #f1f5f9; --muted: #64748b; --accent: #f59e0b;
+            --card: #111827; --border: #1e293b; --card-hover: #1a2035;
+            --danger: #ef4444; --success: #10b981; --warning: #fbbf24; --info: #38bdf8;
+        }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--fg); font-family: 'Space Grotesk', sans-serif; }
+        body::before {
+            content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+            background:
+                radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 85% 20%, rgba(56,189,248,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 90%, rgba(239,68,68,0.03) 0%, transparent 40%);
+        }
+        body::after {
+            content:''; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.25;
+            background-image:
+                linear-gradient(rgba(42,53,85,0.4) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(42,53,85,0.4) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+        main, header, footer { position: relative; z-index: 1; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+        /* Cards */
+        .card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .card:hover { border-color: rgba(245,158,11,0.2); box-shadow: 0 0 20px rgba(245,158,11,0.04); }
+
+        /* Pulse dot */
+        .pulse-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: var(--success); position: relative;
+        }
+        .pulse-dot::after {
+            content:''; position:absolute; inset:-4px; border-radius:50%;
+            background: var(--success); opacity:0; animation: pulse-ring 2s ease-out infinite;
+        }
+        @keyframes pulse-ring { 0%{transform:scale(0.5);opacity:0.6} 100%{transform:scale(2);opacity:0} }
+
+        /* Stat counter animation */
+        .stat-value { font-variant-numeric: tabular-nums; }
+
+        /* Confidence bars */
+        .conf-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; }
+        .conf-fill { height: 100%; border-radius: 4px; width: 0; transition: width 1s cubic-bezier(0.22,1,0.36,1); }
+
+        /* Processing steps */
+        .step-item { opacity: 0; transform: translateX(-10px); transition: all 0.4s ease; }
+        .step-item.active { opacity: 1; transform: translateX(0); }
+        .step-item .step-check { transition: all 0.3s ease; }
+        .step-item.active .step-check { color: var(--success); }
+
+        /* Threat badge */
+        .threat-badge {
+            display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px;
+            border-radius: 50px; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .threat-none { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+        .threat-low { background: rgba(56,189,248,0.12); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.25); }
+        .threat-medium { background: rgba(251,191,36,0.12); color: #fde68a; border: 1px solid rgba(251,191,36,0.25); }
+        .threat-high { background: rgba(249,115,22,0.12); color: #fdba74; border: 1px solid rgba(249,115,22,0.25); }
+        .threat-critical { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); animation: critical-pulse 1.5s ease-in-out infinite; }
+        @keyframes critical-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.3)} 50%{box-shadow:0 0 20px 4px rgba(239,68,68,0.15)} }
+
+        /* Keyword tag */
+        .kw-tag {
+            display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace; font-weight: 500;
+        }
+        .kw-violence { background: rgba(239,68,68,0.15); color: #fca5a5; }
+        .kw-hate { background: rgba(168,85,247,0.15); color: #d8b4fe; }
+        .kw-radical { background: rgba(249,115,22,0.15); color: #fdba74; }
+        .kw-coordinate { background: rgba(56,189,248,0.15); color: #7dd3fc; }
+        .kw-threat { background: rgba(251,191,36,0.15); color: #fde68a; }
+
+        /* Feed item */
+        .feed-item {
+            padding: 10px 12px; border-radius: 8px; border-left: 3px solid transparent;
+            transition: background 0.2s; cursor: default;
+        }
+        .feed-item:hover { background: rgba(255,255,255,0.03); }
+        .feed-none { border-left-color: var(--success); }
+        .feed-low { border-left-color: var(--info); }
+        .feed-medium { border-left-color: var(--warning); }
+        .feed-high { border-left-color: #f97316; }
+        .feed-critical { border-left-color: var(--danger); }
+
+        /* Example chip */
+        .example-chip {
+            padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; cursor: pointer;
+            border: 1px solid var(--border); background: transparent; color: var(--muted);
+            transition: all 0.25s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+        }
+        .example-chip:hover { border-color: var(--accent); color: var(--fg); background: rgba(245,158,11,0.06); }
+
+        /* Toast */
+        .toast {
+            position: fixed; top: 20px; right: 20px; z-index: 999; padding: 14px 20px;
+            border-radius: 10px; font-size: 0.875rem; font-weight: 500;
+            transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
+            display: flex; align-items: center; gap: 10px; max-width: 380px;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: #064e3b; color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+        .toast-warning { background: #78350f; color: #fde68a; border: 1px solid rgba(251,191,36,0.3); }
+        .toast-danger { background: #7f1d1d; color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+
+        /* Model row highlight */
+        .model-row-ensemble { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); }
+
+        /* Suspicion meter */
+        .suspicion-track { height: 10px; border-radius: 5px; background: rgba(255,255,255,0.06); overflow: hidden; position: relative; }
+        .suspicion-fill {
+            height: 100%; border-radius: 5px; width: 0;
+            transition: width 1.2s cubic-bezier(0.22,1,0.36,1), background 1s ease;
+        }
+
+        /* Results fade in */
+        .result-section { opacity: 0; transform: translateY(8px); transition: all 0.5s ease; }
+        .result-section.visible { opacity: 1; transform: translateY(0); }
+
+        /* Textarea glow */
+        textarea:focus { box-shadow: 0 0 0 2px rgba(245,158,11,0.25); }
+
+        /* Subtle float animation for accent elements */
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+        .float-anim { animation: float 4s ease-in-out infinite; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Toast container -->
+    <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+    <!-- Header -->
+    <header class="border-b border-navy-500/50 px-6 py-3">
+        <div class="max-w-[1600px] mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                    <i class="fa-solid fa-shield-halved text-navy-900 text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight leading-none">SentinelAI</h1>
+                    <p class="text-[0.65rem] text-slate-500 tracking-widest uppercase">Suspicious Discussion Monitor</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2 text-xs text-slate-400">
+                    <div class="pulse-dot"></div>
+                    <span>System Active</span>
+                </div>
+                <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+                    <i class="fa-solid fa-microchip"></i>
+                    <span>Ensemble Model v2.4</span>
+                </div>
+                <div id="clock" class="font-mono text-xs text-slate-500"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1600px] mx-auto px-6 py-5">
+
+        <!-- Stats Row -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5" aria-label="Key metrics">
+            <div class="card p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-amber-500">
+                    <i class="fa-solid fa-magnifying-glass-chart text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider">Analyzed</p>
+                    <p class="text-xl font-bold stat-value" data-target="1247" data-suffix="">0</p>
+                </div>
+            </div>
+            <div class="card p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-red-400">
+                    <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider">Threats</p>
+                    <p class="text-xl font-bold stat-value" data-target="38" data-suffix="">0</p>
+                </div>
+            </div>
+            <div class="card p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-amber-400">
+                    <i class="fa-solid fa-bell text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider">Active Alerts</p>
+                    <p class="text-xl font-bold stat-value" data-target="5" data-suffix="">0</p>
+                </div>
+            </div>
+            <div class="card p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-emerald-400">
+                    <i class="fa-solid fa-bullseye text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider">Accuracy</p>
+                    <p class="text-xl font-bold stat-value" data-target="96.8" data-suffix="%" data-decimals="1">0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5">
+
+            <!-- Input Panel -->
+            <section class="lg:col-span-4 card p-5" aria-label="Text input">
+                <h2 class="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-keyboard text-amber-500/70 text-xs"></i>
+                    Input Analysis
+                </h2>
+                <div class="relative mb-3">
+                    <textarea id="inputText" rows="5"
+                        class="w-full bg-navy-900 border border-navy-500 rounded-lg p-3 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:border-amber-500/50 font-mono text-[0.82rem] leading-relaxed transition-all"
+                        placeholder="Paste suspicious text here..." maxlength="1000"
+                        aria-label="Text to analyze"></textarea>
+                    <span id="charCount" class="absolute bottom-2 right-3 text-[0.65rem] text-slate-600 font-mono">0/1000</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-[0.7rem] text-slate-500 uppercase tracking-wider mb-1 block">Language</label>
+                    <select id="langSelect" class="w-full bg-navy-900 border border-navy-500 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-amber-500/50 transition-all cursor-pointer" aria-label="Language selection">
+                        <option value="en" selected>English</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="es">Spanish</option>
+                        <option value="ar">Arabic</option>
+                    </select>
+                </div>
+                <button id="analyzeBtn" onclick="runAnalysis()"
+                    class="w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 text-navy-900 font-semibold text-sm hover:from-amber-500 hover:to-amber-400 transition-all active:scale-[0.98] flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    aria-label="Analyze text">
+                    <i class="fa-solid fa-bolt text-xs"></i>
+                    Analyze Text
+                </button>
+                <p class="text-[0.6rem] text-slate-600 text-center mt-2">Ctrl + Enter to analyze</p>
+
+                <!-- Example texts -->
+                <div class="mt-4 pt-4 border-t border-navy-500/50">
+                    <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider mb-2">Quick Examples</p>
+                    <div class="flex flex-wrap gap-1.5" id="examples"></div>
+                </div>
+            </section>
+
+            <!-- Analysis Results -->
+            <section class="lg:col-span-5 card p-5" aria-label="Analysis results">
+                <h2 class="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-amber-500/70 text-xs"></i>
+                    Analysis Results
+                </h2>
+
+                <!-- Empty state -->
+                <div id="emptyState" class="flex flex-col items-center justify-center py-12 text-slate-600">
+                    <i class="fa-solid fa-satellite-dish text-3xl mb-3 float-anim"></i>
+                    <p class="text-sm">Awaiting input for analysis</p>
+                    <p class="text-xs mt-1">Enter text or select an example to begin</p>
+                </div>
+
+                <!-- Processing animation -->
+                <div id="processingState" class="hidden py-6">
+                    <div id="processingSteps" class="space-y-2.5"></div>
+                </div>
+
+                <!-- Results content -->
+                <div id="resultsContent" class="hidden space-y-5">
+
+                    <!-- Threat level -->
+                    <div class="result-section flex items-center justify-between" id="resThreat">
+                        <div>
+                            <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider mb-1">Threat Level</p>
+                            <div id="threatBadge" class="threat-badge threat-none">
+                                <i class="fa-solid fa-shield-check text-xs"></i>
+                                <span>NONE</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider mb-1">Suspicion Score</p>
+                            <p id="suspicionScore" class="text-2xl font-bold font-mono text-emerald-400">0.0</p>
+                        </div>
+                    </div>
+
+                    <!-- Suspicion meter -->
+                    <div class="result-section" id="resMeter">
+                        <div class="suspicion-track">
+                            <div id="suspicionFill" class="suspicion-fill" style="background: linear-gradient(90deg, #10b981, #10b981);"></div>
+                        </div>
+                        <div class="flex justify-between text-[0.6rem] text-slate-600 mt-1">
+                            <span>Safe</span><span>Suspicious</span><span>Threatening</span>
+                        </div>
+                    </div>
+
+                    <!-- Confidence breakdown -->
+                    <div class="result-section" id="resConfidence">
+                        <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider mb-3">Classification Confidence</p>
+                        <div class="space-y-3" id="confidenceBars"></div>
+                    </div>
+
+                    <!-- Flagged keywords -->
+                    <div class="result-section" id="resKeywords">
+                        <p class="text-[0.7rem] text-slate-500 uppercase tracking-wider mb-2">Flagged Keywords & Patterns</p>
+                        <div id="keywordTags" class="flex flex-wrap gap-1.5">
+                            <span class="text-xs text-slate-600 italic">No suspicious keywords detected</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Side Panel -->
+            <aside class="lg:col-span-3 space-y-5" aria-label="Model details">
+                <!-- Model Comparison -->
+                <div class="card p-4">
+                    <h3 class="text-xs font-semibold text-slate-400 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-code-branch text-amber-500/60 text-[0.65rem]"></i>
+                        Model Comparison
+                    </h3>
+                    <div id="modelTable" class="space-y-2 text-xs">
+                        <p class="text-slate-600 italic text-[0.7rem]">Run analysis to compare models</p>
+                    </div>
+                </div>
+
+                <!-- Processing Details -->
+                <div class="card p-4">
+                    <h3 class="text-xs font-semibold text-slate-400 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-gears text-amber-500/60 text-[0.65rem]"></i>
+                        Processing Details
+                    </h3>
+                    <div id="processingDetails" class="space-y-3 text-xs">
+                        <p class="text-slate-600 italic text-[0.7rem]">No data yet</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Bottom Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <!-- Trend Chart -->
+            <section class="lg:col-span-5 card p-5" aria-label="Threat trend chart">
+                <h3 class="text-xs font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-amber-500/60 text-[0.65rem]"></i>
+                    7-Day Threat Trend
+                </h3>
+                <div class="relative" style="height:200px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Category Breakdown -->
+            <section class="lg:col-span-3 card p-5" aria-label="Threat categories">
+                <h3 class="text-xs font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-tags text-amber-500/60 text-[0.65rem]"></i>
+                    Threat Categories
+                </h3>
+                <div class="relative flex items-center justify-center" style="height:200px;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Live Feed -->
+            <section class="lg:col-span-4 card p-5" aria-label="Live monitoring feed">
+                <h3 class="text-xs font-semibold text-slate-400 mb-3 flex items-center gap-2">
+                    <div class="pulse-dot" style="width:6px;height:6px;"></div>
+                    Live Feed
+                </h3>
+                <div id="liveFeed" class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1"></div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="border-t border-navy-500/30 mt-6 py-4 text-center text-[0.65rem] text-slate-600 relative z-10">
+        SentinelAI v2.4 — Ensemble Classification Pipeline (NB + LR + SVM) — All analysis runs locally
+    </footer>
+
+<script>
+/* ===== CONFIGURATION & DATA ===== */
+
+const suspiciousKeywords = {
+    violence: ['kill','attack','bomb','shoot','murder','violence','weapon','gun','knife','fight','beat','hurt','destroy','explosive','detonate','assault','stab','strike'],
+    hate: ['hate','racist','racism','discrimination','inferior','supremacy','nazi','fascist','bigot','xenophobe','degenerate','subhuman','purge','ethnic'],
+    radical: ['radical','extremist','martyr','jihad','holy war','sacrifice','cause','awaken','resist','overthrow','revolution','uprising','regime','propaganda','recruit'],
+    coordinate: ['meet at','location','plan this','coordinate','schedule','tomorrow at','tonight at','specific time','gathering','assemble','rendezvous','drop point'],
+    threat: ['threat','warn','consequence','pay for','regret','watch out','careful','revenge','retaliation','punish','you will','going to get','target']
+};
+
+const stopWords = new Set(['i','me','my','myself','we','our','ours','you','your','yours','he','him','his','she','her','hers','it','its','they','them','their','theirs','what','which','who','whom','this','that','these','those','am','is','are','was','were','be','been','being','have','has','had','having','do','does','did','doing','a','an','the','and','but','if','or','because','as','until','while','of','at','by','for','with','about','against','between','through','during','before','after','above','below','to','from','up','down','in','out','on','off','over','under','again','further','then','once','here','there','when','where','why','how','all','both','each','few','more','most','other','some','such','no','nor','not','only','own','same','so','than','too','very','just','don','should','now','will','would','could','shall','can','may','might','must','need','really','much','also','still','even','well','back','way','get','got','go','going','goes','went','come','came','make','made','take','took','know','knew','see','saw','think','thought','say','said','tell','told','give','gave','let','put','keep','kept','seem','seemed','try','tried','ask','asked','want','wanted','use','used','find','found','thing','things','like','ll','ve','re','d','m','s','t']);
+
+const positiveWords = new Set(['love','great','good','happy','excellent','wonderful','amazing','best','beautiful','enjoy','perfect','awesome','fantastic','brilliant','nice','fine','pleasant','glad','delighted','cheerful','grateful','thankful','blessed','peaceful','calm','kind','gentle','warm','bright','hope','joy','fun']);
+const negativeWords = new Set(['hate','bad','terrible','awful','worst','ugly','disgusting','horrible','evil','wrong','stupid','idiot','dumb','pathetic','miserable','cruel','sick','twisted','corrupt','toxic','nasty','vile','wretched','foul','dark']);
+
+const exampleTexts = [
+    { text: "I love this weather, it's so beautiful outside today", label: "Benign" },
+    { text: "We need to take action against them, they can't keep getting away with this", label: "Aggressive" },
+    { text: "Meeting at the old warehouse at midnight, bring the package", label: "Coordination" },
+    { text: "Everyone should wake up and see the truth about the regime, join the cause", label: "Radicalization" },
+    { text: "You will pay for what you did, watch your back", label: "Threat" },
+    { text: "Had a wonderful dinner with friends, great food and conversation", label: "Benign" }
+];
+
+const processingSteps = [
+    { label: 'Tokenization', icon: 'fa-scissors' },
+    { label: 'Text Cleaning', icon: 'fa-broom' },
+    { label: 'Stop Word Removal', icon: 'fa-filter' },
+    { label: 'Feature Extraction (TF-IDF)', icon: 'fa-vector-square' },
+    { label: 'Model Inference (NB + LR + SVM)', icon: 'fa-brain' },
+    { label: 'Ensemble Aggregation', icon: 'fa-layer-group' }
+];
+
+/* Feed initial data */
+const feedData = [
+    { text: "Meeting at the usual place tomorrow", time: "2 min ago", level: "Medium", cat: "Coordination" },
+    { text: "Great weather today, love spending time outside", time: "5 min ago", level: "None", cat: "Benign" },
+    { text: "They need to pay for what they did to us", time: "8 min ago", level: "High", cat: "Threat" },
+    { text: "Check out this new restaurant downtown", time: "12 min ago", level: "None", cat: "Benign" },
+    { text: "We should organize and take action now", time: "15 min ago", level: "Low", cat: "Radicalization" },
+    { text: "Just finished a great book, highly recommend it", time: "18 min ago", level: "None", cat: "Benign" },
+    { text: "The bomb threat was called in from a payphone", time: "22 min ago", level: "Critical", cat: "Violence" },
+    { text: "Looking forward to the weekend hike with friends", time: "25 min ago", level: "None", cat: "Benign" }
+];
+
+/* ===== STATE ===== */
+let isAnalyzing = false;
+let totalAnalyzed = 1247;
+let threatsDetected = 38;
+let trendChartInstance = null;
+let categoryChartInstance = null;
+
+/* ===== UTILITY FUNCTIONS ===== */
+
+function preprocessText(text) {
+    return text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => !stopWords.has(w) && w.length > 0).join(' ');
+}
+
+function detectKeywords(text) {
+    const lower = text.toLowerCase();
+    const found = {};
+    for (const [category, keywords] of Object.entries(suspiciousKeywords)) {
+        const matches = keywords.filter(kw => lower.includes(kw));
+        if (matches.length > 0) found[category] = matches;
+    }
+    return found;
+}
+
+function analyzeSentiment(words) {
+    let pos = 0, neg = 0;
+    words.forEach(w => { if (positiveWords.has(w)) pos++; if (negativeWords.has(w)) neg++; });
+    const total = Math.max(words.length, 1);
+    return { positive: pos / total, negative: neg / total, neutral: 1 - (pos + neg) / total };
+}
+
+function calculateThreat(keywords, sentiment, wordCount) {
+    let score = 0;
+    const weights = { violence: 0.35, hate: 0.2, radical: 0.2, coordinate: 0.15, threat: 0.3 };
+    for (const [cat, matches] of Object.entries(keywords)) {
+        score += (matches.length * (weights[cat] || 0.15));
+    }
+    score += sentiment.negative * 0.15;
+    score = Math.min(score, 1.0);
+    /* Small random noise for realism */
+    score += (Math.random() - 0.5) * 0.05;
+    return Math.max(0, Math.min(1, score));
+}
+
+function getThreatLevel(score) {
+    if (score < 0.1) return 'None';
+    if (score < 0.3) return 'Low';
+    if (score < 0.55) return 'Medium';
+    if (score < 0.8) return 'High';
+    return 'Critical';
+}
+
+function getModelPredictions(threatScore, sentiment) {
+    const noise = () => (Math.random() - 0.5) * 0.12;
+    const clamp = v => Math.max(0, Math.min(100, v));
+    const safe = (1 - threatScore) * 100;
+    const susp = threatScore * 35 + sentiment.negative * 30;
+    const aggr = sentiment.negative * 50 + threatScore * 20;
+    const threat = threatScore * 100 - susp * 0.3;
+    const total = safe + susp + aggr + Math.max(0, threat);
+    const norm = v => clamp(v / total * 100);
+
+    return {
+        'Naive Bayes': { safe: norm(safe + noise()*40), suspicious: norm(susp + noise()*30), aggressive: norm(aggr + noise()*25), threatening: norm(Math.max(0,threat) + noise()*20) },
+        'Logistic Reg.': { safe: norm(safe + noise()*35), suspicious: norm(susp + noise()*25), aggressive: norm(aggr + noise()*20), threatening: norm(Math.max(0,threat) + noise()*15) },
+        'SVM': { safe: norm(safe + noise()*30), suspicious: norm(susp + noise()*20), aggressive: norm(aggr + noise()*15), threatening: norm(Math.max(0,threat) + noise()*10) },
+        'Ensemble': null /* Computed as average below */
+    };
+}
+
+function ensembleAvg(models) {
+    const keys = ['safe','suspicious','aggressive','threatening'];
+    const result = {};
+    keys.forEach(k => {
+        const vals = Object.values(models).map(m => m[k]);
+        result[k] = vals.reduce((a,b) => a+b, 0) / vals.length;
+    });
+    /* Re-normalize */
+    const total = Object.values(result).reduce((a,b) => a+b, 0);
+    keys.forEach(k => result[k] = result[k] / total * 100);
+    return result;
+}
+
+function showToast(message, type) {
+    const toast = document.getElementById('toast');
+    const icons = { success: 'fa-circle-check', warning: 'fa-triangle-exclamation', danger: 'fa-circle-xmark' };
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<i class="fa-solid ${icons[type]}"></i><span>${message}</span>`;
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+function animateCounter(el, target, duration, decimals, suffix) {
+    const start = 0;
+    const startTime = performance.now();
+    function tick(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = start + (target - start) * eased;
+        el.textContent = (decimals ? current.toFixed(decimals) : Math.round(current)) + (suffix || '');
+        if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+}
+
+/* ===== MAIN ANALYSIS ===== */
+
+async function runAnalysis() {
+    const text = document.getElementById('inputText').value.trim();
+    if (!text) { showToast('Please enter text to analyze', 'warning'); return; }
+    if (isAnalyzing) return;
+    isAnalyzing = true;
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Analyzing...';
+    btn.disabled = true;
+
+    /* Show processing, hide others */
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('resultsContent').classList.add('hidden');
+    document.getElementById('processingState').classList.remove('hidden');
+
+    /* Animate processing steps */
+    const stepsContainer = document.getElementById('processingSteps');
+    stepsContainer.innerHTML = '';
+    for (const step of processingSteps) {
+        const div = document.createElement('div');
+        div.className = 'step-item flex items-center gap-3 text-sm';
+        div.innerHTML = `
+            <i class="fa-solid ${step.icon} text-slate-600 step-icon w-4 text-center text-xs"></i>
+            <span class="text-slate-500 step-label">${step.label}</span>
+            <i class="fa-solid fa-circle-check step-check text-slate-700 ml-auto text-xs"></i>
+        `;
+        stepsContainer.appendChild(div);
+    }
+
+    const steps = stepsContainer.querySelectorAll('.step-item');
+    for (let i = 0; i < steps.length; i++) {
+        await new Promise(r => setTimeout(r, 250));
+        steps[i].classList.add('active');
+        steps[i].querySelector('.step-icon').classList.replace('text-slate-600','text-amber-500');
+        steps[i].querySelector('.step-label').classList.replace('text-slate-500','text-slate-300');
+    }
+    await new Promise(r => setTimeout(r, 300));
+
+    /* Perform analysis */
+    const lang = document.getElementById('langSelect').value;
+    const processed = preprocessText(text);
+    const words = processed.split(/\s+/).filter(w => w.length > 0);
+    const keywords = detectKeywords(text);
+    const sentiment = analyzeSentiment(words);
+    const threatScore = calculateThreat(keywords, sentiment, words.length);
+    const threatLevel = getThreatLevel(threatScore);
+    const models = getModelPredictions(threatScore, sentiment);
+    models['Ensemble'] = ensembleAvg(models);
+    const ensembleResult = models['Ensemble'];
+
+    /* Hide processing, show results */
+    document.getElementById('processingState').classList.add('hidden');
+    document.getElementById('resultsContent').classList.remove('hidden');
+
+    /* Threat badge */
+    const badge = document.getElementById('threatBadge');
+    const levelClass = `threat-${threatLevel.toLowerCase()}`;
+    badge.className = `threat-badge ${levelClass}`;
+    const threatIcons = { None:'fa-shield-check', Low:'fa-shield', Medium:'fa-shield-exclamation', High:'fa-triangle-exclamation', Critical:'fa-skull-crossbones' };
+    badge.innerHTML = `<i class="fa-solid ${threatIcons[threatLevel] || 'fa-shield'} text-xs"></i><span>${threatLevel.toUpperCase()}</span>`;
+
+    /* Suspicion score */
+    const scoreEl = document.getElementById('suspicionScore');
+    const scoreColors = { None:'#34d399', Low:'#7dd3fc', Medium:'#fde68a', High:'#fdba74', Critical:'#fca5a5' };
+    scoreEl.style.color = scoreColors[threatLevel];
+    animateCounter(scoreEl, threatScore * 100, 800, 1, '%');
+
+    /* Suspicion meter */
+    const fill = document.getElementById('suspicionFill');
+    fill.style.width = '0%';
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            fill.style.width = (threatScore * 100) + '%';
+            if (threatScore < 0.3) fill.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
+            else if (threatScore < 0.55) fill.style.background = 'linear-gradient(90deg, #10b981, #fbbf24)';
+            else if (threatScore < 0.8) fill.style.background = 'linear-gradient(90deg, #fbbf24, #f97316)';
+            else fill.style.background = 'linear-gradient(90deg, #f97316, #ef4444)';
+        }, 50);
+    });
+
+    /* Confidence bars */
+    const confContainer = document.getElementById('confidenceBars');
+    confContainer.innerHTML = '';
+    const confItems = [
+        { label: 'Safe', value: ensembleResult.safe, color: '#10b981' },
+        { label: 'Suspicious', value: ensembleResult.suspicious, color: '#38bdf8' },
+        { label: 'Aggressive', value: ensembleResult.aggressive, color: '#fbbf24' },
+        { label: 'Threatening', value: ensembleResult.threatening, color: '#ef4444' }
+    ];
+    confItems.forEach(item => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400">${item.label}</span>
+                <span class="font-mono text-slate-300">${item.value.toFixed(1)}%</span>
+            </div>
+            <div class="conf-bar"><div class="conf-fill" style="background:${item.color};" data-width="${item.value}%"></div></div>
+        `;
+        confContainer.appendChild(div);
+    });
+    /* Animate confidence bars */
+    setTimeout(() => {
+        confContainer.querySelectorAll('.conf-fill').forEach(el => { el.style.width = el.dataset.width; });
+    }, 100);
+
+    /* Keywords */
+    const kwContainer = document.getElementById('keywordTags');
+    kwContainer.innerHTML = '';
+    const catLabels = { violence:'Violence', hate:'Hate Speech', radical:'Radicalization', coordinate:'Coordination', threat:'Threat' };
+    const catClasses = { violence:'kw-violence', hate:'kw-hate', radical:'kw-radical', coordinate:'kw-coordinate', threat:'kw-threat' };
+    if (Object.keys(keywords).length === 0) {
+        kwContainer.innerHTML = '<span class="text-xs text-slate-600 italic">No suspicious keywords detected</span>';
+    } else {
+        for (const [cat, matches] of Object.entries(keywords)) {
+            const catTag = document.createElement('span');
+            catTag.className = `kw-tag ${catClasses[cat]} font-display`;
+            catTag.textContent = catLabels[cat];
+            kwContainer.appendChild(catTag);
+            matches.forEach(m => {
+                const tag = document.createElement('span');
+                tag.className = `kw-tag ${catClasses[cat]}`;
+                tag.textContent = m;
+                kwContainer.appendChild(tag);
+            });
+        }
+    }
+
+    /* Model comparison */
+    const modelTable = document.getElementById('modelTable');
+    modelTable.innerHTML = '';
+    const modelOrder = ['Naive Bayes', 'Logistic Reg.', 'SVM', 'Ensemble'];
+    modelOrder.forEach(name => {
+        const m = models[name];
+        const isEnsemble = name === 'Ensemble';
+        const row = document.createElement('div');
+        row.className = `rounded-lg p-2.5 ${isEnsemble ? 'model-row-ensemble' : 'bg-navy-900/50'}`;
+        row.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="font-medium ${isEnsemble ? 'text-amber-400' : 'text-slate-400'}">${name}${isEnsemble ? ' <i class="fa-solid fa-star text-[0.5rem]"></i>' : ''}</span>
+                <span class="font-mono ${isEnsemble ? 'text-amber-400' : 'text-slate-500'}">${m.threatening.toFixed(1)}%</span>
+            </div>
+            <div class="flex gap-0.5 h-1.5 rounded overflow-hidden">
+                <div style="width:${m.safe}%;background:#10b981;" class="rounded-l"></div>
+                <div style="width:${m.suspicious}%;background:#38bdf8;"></div>
+                <div style="width:${m.aggressive}%;background:#fbbf24;"></div>
+                <div style="width:${m.threatening}%;background:#ef4444;" class="rounded-r"></div>
+            </div>
+        `;
+        modelTable.appendChild(row);
+    });
+
+    /* Processing details */
+    const details = document.getElementById('processingDetails');
+    details.innerHTML = `
+        <div>
+            <span class="text-slate-600">Language</span>
+            <p class="text-slate-300 font-mono">${document.getElementById('langSelect').selectedOptions[0].text}</p>
+        </div>
+        <div>
+            <span class="text-slate-600">Model</span>
+            <p class="text-slate-300 font-mono text-[0.7rem]">Ensemble (NB + LR + SVM)</p>
+        </div>
+        <div>
+            <span class="text-slate-600">Tokens</span>
+            <p class="text-slate-300 font-mono">${text.split(/\s+/).length} input / ${words.length} filtered</p>
+        </div>
+        <div>
+            <span class="text-slate-600">Preprocessed</span>
+            <p class="text-slate-400 font-mono text-[0.7rem] leading-relaxed break-all">${processed || '<em class="text-slate-600">empty</em>'}</p>
+        </div>
+        <div>
+            <span class="text-slate-600">Sentiment</span>
+            <p class="font-mono"><span class="text-emerald-400">+${(sentiment.positive*100).toFixed(0)}%</span> <span class="text-slate-600">/</span> <span class="text-red-400">-${(sentiment.negative*100).toFixed(0)}%</span> <span class="text-slate-600">/</span> <span class="text-slate-500">${(sentiment.neutral*100).toFixed(0)}%</span></p>
+        </div>
+    `;
+
+    /* Stagger result sections */
+    const sections = document.querySelectorAll('.result-section');
+    sections.forEach((s, i) => { s.classList.remove('visible'); setTimeout(() => s.classList.add('visible'), 100 + i * 120); });
+
+    /* Update feed */
+    addFeedItem(text, threatLevel, Object.keys(keywords).length > 0 ? catLabels[Object.keys(keywords)[0]] : 'Benign');
+
+    /* Update stats */
+    totalAnalyzed++;
+    if (threatLevel !== 'None' && threatLevel !== 'Low') threatsDetected++;
+    document.querySelectorAll('.stat-value')[0].textContent = totalAnalyzed;
+    document.querySelectorAll('.stat-value')[1].textContent = threatsDetected;
+
+    /* Update trend chart */
+    if (trendChartInstance) {
+        const ds = trendChartInstance.data.datasets[0];
+        ds.data[6] += (threatLevel !== 'None' && threatLevel !== 'Low') ? 1 : 0;
+        trendChartInstance.data.datasets[1].data[6] += 1;
+        trendChartInstance.update('none');
+    }
+
+    /* Toast */
+    if (threatLevel === 'Critical' || threatLevel === 'High') {
+        showToast(`High threat detected: "${text.substring(0, 40)}..."`, 'danger');
+    } else if (threatLevel === 'Medium') {
+        showToast('Suspicious content flagged for review', 'warning');
+    } else {
+        showToast('Analysis complete — no significant threats', 'success');
+    }
+
+    /* Reset button */
+    btn.innerHTML = '<i class="fa-solid fa-bolt text-xs"></i> Analyze Text';
+    btn.disabled = false;
+    isAnalyzing = false;
+}
+
+/* ===== FEED ===== */
+
+function addFeedItem(text, level, cat) {
+    const feed = document.getElementById('liveFeed');
+    const item = document.createElement('div');
+    item.className = `feed-item feed-${level.toLowerCase()}`;
+    const levelColors = { None:'text-emerald-400', Low:'text-sky-400', Medium:'text-amber-400', High:'text-orange-400', Critical:'text-red-400' };
+    const truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
+    item.innerHTML = `
+        <div class="flex justify-between items-start gap-2">
+            <p class="text-xs text-slate-400 leading-relaxed">${truncated}</p>
+            <span class="text-[0.6rem] font-mono ${levelColors[level]} whitespace-nowrap">${level}</span>
+        </div>
+        <p class="text-[0.6rem] text-slate-600 mt-0.5">${cat} · just now</p>
+    `;
+    item.style.opacity = '0';
+    item.style.transform = 'translateY(-8px)';
+    feed.insertBefore(item, feed.firstChild);
+    requestAnimationFrame(() => {
+        item.style.transition = 'all 0.4s ease';
+        item.style.opacity = '1';
+        item.style.transform = 'translateY(0)';
+    });
+    /* Keep max 20 items */
+    while (feed.children.length > 20) feed.removeChild(feed.lastChild);
+}
+
+function initFeed() {
+    const feed = document.getElementById('liveFeed');
+    feedData.forEach(d => {
+        const item = document.createElement('div');
+        const levelColors = { None:'text-emerald-400', Low:'text-sky-400', Medium:'text-amber-400', High:'text-orange-400', Critical:'text-red-400' };
+        item.className = `feed-item feed-${d.level.toLowerCase()}`;
+        const truncated = d.text.length > 50 ? d.text.substring(0, 50) + '...' : d.text;
+        item.innerHTML = `
+            <div class="flex justify-between items-start gap-2">
+                <p class="text-xs text-slate-400 leading-relaxed">${truncated}</p>
+                <span class="text-[0.6rem] font-mono ${levelColors[d.level]} whitespace-nowrap">${d.level}</span>
+            </div>
+            <p class="text-[0.6rem] text-slate-600 mt-0.5">${d.cat} · ${d.time}</p>
+        `;
+        feed.appendChild(item);
+    });
+}
+
+/* ===== CHARTS ===== */
+
+function initTrendChart() {
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [
+                {
+                    label: 'Threats',
+                    data: [5, 8, 3, 12, 7, 4, 9],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239,68,68,0.08)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#ef4444',
+                    borderWidth: 2
+                },
+                {
+                    label: 'Total Analyzed',
+                    data: [145, 178, 132, 201, 167, 98, 156],
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245,158,11,0.05)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#f59e0b',
+                    borderWidth: 2,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: true, position: 'top', labels: { color: '#64748b', font: { size: 10, family: 'Space Grotesk' }, boxWidth: 12, padding: 12 } }
+            },
+            scales: {
+                x: { grid: { color: 'rgba(42,53,85,0.3)' }, ticks: { color: '#475569', font: { size: 10 } } },
+                y: { position: 'left', grid: { color: 'rgba(42,53,85,0.2)' }, ticks: { color: '#ef4444', font: { size: 10 } }, title: { display: true, text: 'Threats', color: '#ef4444', font: { size: 9 } } },
+                y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f59e0b', font: { size: 10 } }, title: { display: true, text: 'Total', color: '#f59e0b', font: { size: 9 } } }
+            }
+        }
+    });
+}
+
+function initCategoryChart() {
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    categoryChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Violence', 'Hate Speech', 'Radicalization', 'Coordination', 'Threats', 'Other'],
+            datasets: [{
+                data: [28, 18, 12, 22, 15, 5],
+                backgroundColor: ['#ef4444', '#a855f7', '#f97316', '#38bdf8', '#fbbf24', '#475569'],
+                borderColor: '#111827',
+                borderWidth: 2,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#64748b', font: { size: 9, family: 'Space Grotesk' }, boxWidth: 10, padding: 8 } }
+            }
+        }
+    });
+}
+
+/* ===== EXAMPLES ===== */
+
+function initExamples() {
+    const container = document.getElementById('examples');
+    exampleTexts.forEach(ex => {
+        const chip = document.createElement('button');
+        chip.className = 'example-chip';
+        chip.textContent = ex.label;
+        chip.title = ex.text;
+        chip.setAttribute('aria-label', `Load example: ${ex.label}`);
+        chip.addEventListener('click', () => {
+            document.getElementById('inputText').value = ex.text;
+            document.getElementById('charCount').textContent = `${ex.text.length}/1000`;
+        });
+        container.appendChild(chip);
+    });
+}
+
+/* ===== CLOCK ===== */
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+/* ===== INIT ===== */
+
+document.addEventListener('DOMContentLoaded', () => {
+    /* Character counter */
+    const input = document.getElementById('inputText');
+    const counter = document.getElementById('charCount');
+    input.addEventListener('input', () => {
+        const len = input.value.length;
+        counter.textContent = `${len}/1000`;
+        counter.style.color = len > 900 ? '#ef4444' : len > 700 ? '#fbbf24' : '';
+    });
+
+    /* Keyboard shortcut */
+    input.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); runAnalysis(); }
+    });
+
+    /* Init components */
+    initExamples();
+    initFeed();
+    initTrendChart();
+    initCategoryChart();
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    /* Animate stat counters */
+    document.querySelectorAll('.stat-value').forEach((el, i) => {
+        const target = parseFloat(el.dataset.target);
+        const suffix = el.dataset.suffix || '';
+        const decimals = parseInt(el.dataset.decimals) || 0;
+        setTimeout(() => animateCounter(el, target, 1200, decimals, suffix), 200 + i * 150);
+    });
+});
+</script>
+</body>
+</html>

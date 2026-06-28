@@ -1,0 +1,9 @@
+======================================================================
+FINAL CONCLUSIONS - HATE SPEECH DETECTION
+======================================================================
+
+Best Model: Logistic Regression
+Hate Speech F1: 0.3976
+Macro F1: 0.7266
+
+Model selected for interpretability and hate speech performance.

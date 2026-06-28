@@ -1,0 +1,5 @@
+Model,Original,SMOTE Only,SMOTE + CW,Config A
+Logistic Regression,0.2717,0.4085,0.3976,0.3847
+Naive Bayes,0.0143,0.3492,0.0143,0.3492
+Random Forest,0.0,0.1419,0.4005,0.3904
+SVM Linear,0.3262,0.3502,0.3769,0.3484

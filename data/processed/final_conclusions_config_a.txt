@@ -1,0 +1,75 @@
+
+================================================================================
+                    FINAL CONCLUSIONS — CONFIG A
+================================================================================
+Date: 2026-06-28 19:52:24
+
+================================================================================
+PROJECT SUMMARY
+================================================================================
+Project: Monitoring Suspicious Discussions on Online Platforms
+Objective: Classify text into Normal, Offensive, and Hate Speech
+Dataset: 27,510 real social media posts (Davidson + Reddit + HackerNews)
+
+================================================================================
+FINAL MODEL
+================================================================================
+Model: Random Forest (Config A)
+Strategy: SMOTE hate to 6,900 + class weights
+
+Performance:
+   - Accuracy: 84.42%
+   - Macro F1: 0.7141
+   - Weighted F1: 0.8536
+   - Hate Speech F1: 0.4131
+   - Hate Recall: 54.3%
+   - Hate Precision: 33.3%
+   - Overfitting Gap: 0.0213 (No overfitting)
+
+Confusion Matrix:
+              Predicted
+              Normal  Offensive  Hate
+Actual Normal   1312       40      28
+       Offensive  388     3182     274
+       Hate        50       77     151
+
+================================================================================
+COMPARISON WITH OTHER STRATEGIES
+================================================================================
+Strategy        Best Model      Macro F1    Hate F1    Gap
+Original        Random Forest   0.7319      0.3810     0.08
+SMOTE Only      Logistic Reg    0.7339      0.3932     0.10
+SMOTE + CW      Random Forest   0.7364      0.3959     0.2381
+Config A        Random Forest   0.7141      0.4131     0.0213
+
+================================================================================
+KEY FINDINGS
+================================================================================
+1. Config A achieved the highest Hate Speech F1 (0.4131)
+2. Config A catches 54.3% of hate speech (vs 41.7% for SMOTE+CW)
+3. Config A has no overfitting (gap 0.0213)
+4. Main error: Hate → Offensive (107 messages)
+5. Main false positive: Offensive → Hate (156 messages)
+
+================================================================================
+LIMITATIONS
+================================================================================
+1. Source bias: All hate speech from Davidson (Twitter)
+2. Context blindness: TF-IDF cannot detect implicit hate
+3. Low precision: 33.3% — many false positives
+4. English only
+5. Static model — needs periodic retraining
+
+================================================================================
+FUTURE WORK
+================================================================================
+1. Transformer models (BERT, RoBERTa)
+2. Multilingual support (French, Camfranglais)
+3. More diverse data (Reddit, local platforms)
+4. Active learning
+5. Explainability (LIME, SHAP)
+6. Threshold tuning for better precision
+
+================================================================================
+                             READY FOR DEFENSE
+================================================================================

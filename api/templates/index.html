@@ -1,735 +1,827 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hate Speech Detection System</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Inter', sans-serif;
-    background: #0f172a;
-    color: #e2e8f0;
-    min-height: 100vh;
-  }
-
-  /* ── Header ── */
-  header {
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border-bottom: 1px solid #1e3a5f;
-    padding: 20px 40px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .logo-section h1 {
-    font-size: 18px;
-    font-weight: 700;
-    color: #38bdf8;
-    letter-spacing: -0.02em;
-  }
-
-  .logo-section p {
-    font-size: 12px;
-    color: #64748b;
-    margin-top: 2px;
-  }
-
-  .status-badge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #0f2d1f;
-    border: 1px solid #166534;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    color: #4ade80;
-    font-weight: 500;
-  }
-
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    background: #4ade80;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  /* ── Main Layout ── */
-  main {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 40px 24px;
-  }
-
-  /* ── Project Info ── */
-  .project-info {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 32px;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 20px;
-    text-align: center;
-  }
-
-  .info-item label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #64748b;
-    display: block;
-    margin-bottom: 6px;
-  }
-
-  .info-item span {
-    font-size: 13px;
-    font-weight: 600;
-    color: #e2e8f0;
-  }
-
-  /* ── Detection Card ── */
-  .detection-card {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 16px;
-    padding: 32px;
-    margin-bottom: 32px;
-  }
-
-  .detection-card h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #e2e8f0;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .detection-card h2::before {
-    content: '';
-    width: 4px;
-    height: 18px;
-    background: #38bdf8;
-    border-radius: 2px;
-    display: inline-block;
-  }
-
-  textarea {
-    width: 100%;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 10px;
-    padding: 16px;
-    color: #e2e8f0;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    line-height: 1.6;
-    resize: vertical;
-    min-height: 120px;
-    transition: border-color 0.2s;
-    outline: none;
-  }
-
-  textarea:focus {
-    border-color: #38bdf8;
-  }
-
-  textarea::placeholder { color: #475569; }
-
-  .char-count {
-    text-align: right;
-    font-size: 11px;
-    color: #475569;
-    margin-top: 6px;
-    margin-bottom: 16px;
-  }
-
-  .analyze-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #0284c7, #0369a1);
-    color: white;
-    border: none;
-    padding: 14px;
-    border-radius: 10px;
-    font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: 0.02em;
-  }
-
-  .analyze-btn:hover {
-    background: linear-gradient(135deg, #0369a1, #075985);
-    transform: translateY(-1px);
-  }
-
-  .analyze-btn:disabled {
-    background: #334155;
-    color: #64748b;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  /* ── Result ── */
-  .result-box {
-    margin-top: 24px;
-    border-radius: 12px;
-    padding: 24px;
-    display: none;
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .result-box.normal {
-    background: #0f2d1f;
-    border: 1px solid #166534;
-  }
-
-  .result-box.offensive {
-    background: #2d1f0a;
-    border: 1px solid #92400e;
-  }
-
-  .result-box.hate_speech {
-    background: #2d0f0f;
-    border: 1px solid #991b1b;
-  }
-
-  .result-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-
-  .result-icon {
-    font-size: 36px;
-    line-height: 1;
-  }
-
-  .result-title {
-    font-size: 22px;
-    font-weight: 700;
-  }
-
-  .result-box.normal .result-title { color: #4ade80; }
-  .result-box.offensive .result-title { color: #fbbf24; }
-  .result-box.hate_speech .result-title { color: #f87171; }
-
-  .result-subtitle {
-    font-size: 13px;
-    color: #94a3b8;
-    margin-top: 2px;
-  }
-
-  .result-details {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #334155;
-  }
-
-  .detail-item label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #64748b;
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .detail-item span {
-    font-size: 13px;
-    color: #cbd5e1;
-    word-break: break-all;
-  }
-
-  /* ── Batch Section ── */
-  .batch-card {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 16px;
-    padding: 32px;
-    margin-bottom: 32px;
-  }
-
-  .batch-card h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #e2e8f0;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .batch-card h2::before {
-    content: '';
-    width: 4px;
-    height: 18px;
-    background: #a78bfa;
-    border-radius: 2px;
-    display: inline-block;
-  }
-
-  .batch-subtitle {
-    font-size: 12px;
-    color: #64748b;
-    margin-bottom: 20px;
-  }
-
-  .batch-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #7c3aed, #6d28d9);
-    color: white;
-    border: none;
-    padding: 14px;
-    border-radius: 10px;
-    font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 16px;
-  }
-
-  .batch-btn:hover {
-    background: linear-gradient(135deg, #6d28d9, #5b21b6);
-    transform: translateY(-1px);
-  }
-
-  .batch-results {
-    margin-top: 20px;
-    display: none;
-  }
-
-  .batch-summary {
-    background: #0f172a;
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 16px;
-    display: flex;
-    gap: 24px;
-    justify-content: center;
-  }
-
-  .batch-stat {
-    text-align: center;
-  }
-
-  .batch-stat .num {
-    font-size: 28px;
-    font-weight: 700;
-  }
-
-  .batch-stat .lbl {
-    font-size: 11px;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .batch-stat.normal .num { color: #4ade80; }
-  .batch-stat.offensive .num { color: #fbbf24; }
-  .batch-stat.hate .num { color: #f87171; }
-
-  .batch-item {
-    background: #0f172a;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border-left: 3px solid;
-  }
-
-  .batch-item.normal { border-color: #4ade80; }
-  .batch-item.offensive { border-color: #fbbf24; }
-  .batch-item.hate_speech { border-color: #f87171; }
-
-  .batch-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    min-width: 90px;
-  }
-
-  .batch-item.normal .batch-label { color: #4ade80; }
-  .batch-item.offensive .batch-label { color: #fbbf24; }
-  .batch-item.hate_speech .batch-label { color: #f87171; }
-
-  .batch-text {
-    font-size: 13px;
-    color: #94a3b8;
-    flex: 1;
-  }
-
-  /* ── How it works ── */
-  .how-card {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 16px;
-    padding: 32px;
-  }
-
-  .how-card h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #e2e8f0;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .how-card h2::before {
-    content: '';
-    width: 4px;
-    height: 18px;
-    background: #34d399;
-    border-radius: 2px;
-    display: inline-block;
-  }
-
-  .steps {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-  }
-
-  .step {
-    text-align: center;
-    padding: 16px 8px;
-    background: #0f172a;
-    border-radius: 10px;
-  }
-
-  .step-icon { font-size: 28px; margin-bottom: 8px; }
-
-  .step-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: #e2e8f0;
-    margin-bottom: 4px;
-  }
-
-  .step-desc {
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.5;
-  }
-
-  /* ── Loading ── */
-  .loading {
-    display: none;
-    text-align: center;
-    padding: 20px;
-    color: #64748b;
-    font-size: 14px;
-  }
-
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #334155;
-    border-top-color: #38bdf8;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    display: inline-block;
-    margin-right: 10px;
-    vertical-align: middle;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  /* ── Footer ── */
-  footer {
-    text-align: center;
-    padding: 24px;
-    color: #475569;
-    font-size: 12px;
-    border-top: 1px solid #1e293b;
-    margin-top: 20px;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hate Speech Detection System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 18px 40px;
+            border-bottom: 2px solid #0f3460;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; }
+
+        .brand-logo {
+            background: #e94560;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+        }
+
+        .brand-text h1 {
+            font-size: 1.2rem;
+            color: #e94560;
+            font-weight: 700;
+        }
+
+        .brand-text p {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .lang-badge {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            color: #aaa;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .status-badge {
+            background: #1a3a2a;
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        /* ── Container ── */
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* ── Stats bar ── */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .stat-total     { color: #3498db; }
+        .stat-normal    { color: #2ecc71; }
+        .stat-offensive { color: #e67e22; }
+        .stat-hate      { color: #e74c3c; }
+
+        /* ── Dashboard grid ── */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 800px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .stats-bar { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 14px;
+            padding: 25px;
+        }
+
+        .card-label {
+            font-size: 0.75rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-label::before {
+            content: '';
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #e94560;
+        }
+
+        /* ── Input panel ── */
+        textarea {
+            width: 100%;
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            color: #e0e0e0;
+            padding: 15px;
+            font-size: 1rem;
+            resize: none;
+            height: 180px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus { border-color: #e94560; }
+
+        .input-meta {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .input-meta span { color: #aaa; }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-analyze {
+            flex: 1;
+            background: linear-gradient(135deg, #e94560, #c73652);
+            color: white;
+            padding: 13px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-analyze:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .btn-clear {
+            background: #2a2a4a;
+            color: #aaa;
+            padding: 13px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .btn-clear:hover { background: #3a3a5a; }
+
+        /* ── Result panel ── */
+        .result-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #444;
+            text-align: center;
+            font-size: 0.9rem;
+            gap: 10px;
+        }
+
+        .result-placeholder .placeholder-icon { font-size: 2.5rem; }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px 0;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #2a2a4a;
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Verdict banner */
+        .verdict-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .verdict-icon { font-size: 1.8rem; }
+
+        .verdict-normal    { background: #0d2a1a; border: 1px solid #2ecc71; color: #2ecc71; }
+        .verdict-offensive { background: #2a1a0a; border: 1px solid #e67e22; color: #e67e22; }
+        .verdict-hate      { background: #2a0a0a; border: 1px solid #e74c3c; color: #e74c3c; }
+
+        .verdict-sub {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Warning level pill */
+        .warning-pill {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .pill-none   { background: #1a3a2a; color: #2ecc71; }
+        .pill-low    { background: #2a2a1a; color: #f1c40f; }
+        .pill-medium { background: #2a1a0a; color: #e67e22; }
+        .pill-high   { background: #2a0a0a; color: #e74c3c; }
+
+        /* Confidence scores */
+        .section-title {
+            font-size: 0.72rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            margin-top: 20px;
+        }
+
+        .score-row { margin-bottom: 10px; }
+
+        .score-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.82rem;
+            margin-bottom: 4px;
+            color: #aaa;
+        }
+
+        .score-info .score-pct {
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .bar-bg {
+            background: #0f0f1a;
+            height: 7px;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #2a2a4a;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .bar-normal    { background: #2ecc71; }
+        .bar-offensive { background: #e67e22; }
+        .bar-hate      { background: #e74c3c; }
+
+        /* Processing details */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .meta-box {
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+
+        .meta-box.full { grid-column: span 2; }
+
+        .meta-title {
+            font-size: 0.68rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .meta-value {
+            font-size: 0.82rem;
+            color: #ccc;
+            font-weight: 500;
+        }
+
+        .method-rule { color: #f1c40f; }
+        .method-ml   { color: #3498db; }
+
+        /* ── History ── */
+        .history-section {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 14px;
+            padding: 25px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .history-header h2 {
+            font-size: 0.8rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-clear-history {
+            background: transparent;
+            border: 1px solid #2a2a4a;
+            color: #666;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-clear-history:hover { border-color: #444; color: #aaa; }
+
+        .history-empty {
+            text-align: center;
+            color: #444;
+            padding: 30px;
+            font-size: 0.9rem;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+        }
+
+        .history-badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-normal    { background: #1a3a2a; color: #2ecc71; }
+        .badge-offensive { background: #3a2a1a; color: #e67e22; }
+        .badge-hate      { background: #3a1a1a; color: #e74c3c; }
+
+        .history-text {
+            flex: 1;
+            font-size: 0.85rem;
+            color: #aaa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-method {
+            font-size: 0.72rem;
+            color: #555;
+            white-space: nowrap;
+        }
+
+        .history-time {
+            font-size: 0.72rem;
+            color: #444;
+            white-space: nowrap;
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #333;
+            font-size: 0.8rem;
+            margin-top: 40px;
+            border-top: 1px solid #1a1a2e;
+        }
+    </style>
 </head>
 <body>
 
 <header>
-  <div class="logo-section">
-    <h1>🛡️ Hate Speech Detection System</h1>
-    <p>Monitoring Suspicious Discussions on Online Platforms Using ML</p>
-  </div>
-  <div class="status-badge">
-    <div class="status-dot"></div>
-    API Online
-  </div>
+    <div class="brand">
+        <div class="brand-logo">🛡️</div>
+        <div class="brand-text">
+            <h1>Hate Speech Detection System</h1>
+            <p>Monitoring Suspicious Discussions on Online Platforms Using ML</p>
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="lang-badge">🌐 English</div>
+        <div class="status-badge" id="statusBadge">● Connecting...</div>
+    </div>
 </header>
 
-<main>
+<div class="container">
 
-  <!-- Project Info -->
-  <div class="project-info">
-    <div class="info-item">
-      <label>Model</label>
-      <span>SVM Linear + TF-IDF</span>
-    </div>
-    <div class="info-item">
-      <label>Training Data</label>
-      <span>3,477 Reddit Comments</span>
-    </div>
-    <div class="info-item">
-      <label>Authors</label>
-      <span>Fongang & Fosso Temfack</span>
-    </div>
-  </div>
-
-  <!-- Single Detection -->
-  <div class="detection-card">
-    <h2>Analyze a Comment</h2>
-
-    <textarea id="commentInput"
-      placeholder="Type or paste a comment here to analyze..."
-      oninput="updateCount()"></textarea>
-    <div class="char-count"><span id="charCount">0</span> characters</div>
-
-    <button class="analyze-btn" id="analyzeBtn" onclick="analyzeComment()">
-      🔍 Analyze Comment
-    </button>
-
-    <div class="loading" id="loading">
-      <span class="spinner"></span> Analyzing...
-    </div>
-
-    <div class="result-box" id="resultBox">
-      <div class="result-header">
-        <div class="result-icon" id="resultIcon"></div>
-        <div>
-          <div class="result-title" id="resultTitle"></div>
-          <div class="result-subtitle" id="resultSubtitle"></div>
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="number stat-total" id="statTotal">0</div>
+            <div class="label">Total Analyzed</div>
         </div>
-      </div>
-      <div class="result-details">
-        <div class="detail-item">
-          <label>Original Text</label>
-          <span id="resultOriginal"></span>
+        <div class="stat-card">
+            <div class="number stat-normal" id="statNormal">0</div>
+            <div class="label">Normal</div>
         </div>
-        <div class="detail-item">
-          <label>Preprocessed Text</label>
-          <span id="resultPreprocessed"></span>
+        <div class="stat-card">
+            <div class="number stat-offensive" id="statOffensive">0</div>
+            <div class="label">Offensive</div>
         </div>
-      </div>
+        <div class="stat-card">
+            <div class="number stat-hate" id="statHate">0</div>
+            <div class="label">Hate Speech</div>
+        </div>
     </div>
-  </div>
 
-  <!-- Batch Detection -->
-  <div class="batch-card">
-    <h2>Batch Analysis</h2>
-    <p class="batch-subtitle">Analyze multiple comments at once — one comment per line</p>
+    <!-- Dashboard Grid -->
+    <div class="dashboard-grid">
 
-    <textarea id="batchInput" style="min-height:140px"
-      placeholder="Comment 1&#10;Comment 2&#10;Comment 3&#10;..."></textarea>
+        <!-- Left — Input Panel -->
+        <div class="card">
+            <div class="card-label">input.txt</div>
+            <textarea id="inputText"
+                placeholder="Type or paste a comment, post, or message to analyze..."></textarea>
 
-    <button class="batch-btn" onclick="analyzeBatch()">
-      📊 Analyze All Comments
-    </button>
+            <div class="input-meta">
+                <span>Language: <span>English</span></span>
+                <span>Model: <span>Logistic Regression (SMOTE)</span></span>
+            </div>
 
-    <div class="batch-results" id="batchResults">
-      <div class="batch-summary" id="batchSummary"></div>
-      <div id="batchList"></div>
+            <div class="btn-row">
+                <button class="btn-analyze" onclick="analyzeText()">
+                    🔍 Analyze Text
+                </button>
+                <button class="btn-clear" onclick="clearInput()">Clear</button>
+            </div>
+        </div>
+
+        <!-- Right — Result Panel -->
+        <div class="card">
+            <div class="card-label">results.json</div>
+
+            <!-- Placeholder -->
+            <div id="resultPlaceholder" class="result-placeholder">
+                <div class="placeholder-icon">🔍</div>
+                <p>Enter text on the left and click Analyze<br>to see results here.</p>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="color:#666; font-size:0.85rem;">Running analysis pipeline...</p>
+            </div>
+
+            <!-- Result -->
+            <div id="resultDisplay" style="display:none;">
+
+                <!-- Verdict Banner -->
+                <div id="verdictBanner" class="verdict-banner">
+                    <span class="verdict-icon" id="verdictIcon"></span>
+                    <div>
+                        <div id="verdictLabel"></div>
+                        <div class="verdict-sub" id="verdictSub"></div>
+                    </div>
+                    <span class="warning-pill" id="warningPill"></span>
+                </div>
+
+                <!-- Confidence Scores -->
+                <div class="section-title">Confidence Scores</div>
+
+                <div class="score-row">
+                    <div class="score-info">
+                        <span>Normal</span>
+                        <span class="score-pct" id="scoreNormal">0%</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill bar-normal" id="barNormal"></div>
+                    </div>
+                </div>
+
+                <div class="score-row">
+                    <div class="score-info">
+                        <span>Offensive</span>
+                        <span class="score-pct" id="scoreOffensive">0%</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill bar-offensive" id="barOffensive"></div>
+                    </div>
+                </div>
+
+                <div class="score-row">
+                    <div class="score-info">
+                        <span>Hate Speech</span>
+                        <span class="score-pct" id="scoreHate">0%</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill bar-hate" id="barHate"></div>
+                    </div>
+                </div>
+
+                <!-- Processing Details -->
+                <div class="section-title">Processing Details</div>
+                <div class="meta-grid">
+                    <div class="meta-box">
+                        <div class="meta-title">Language</div>
+                        <div class="meta-value">English</div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-title">Detection Method</div>
+                        <div class="meta-value" id="metaMethod"></div>
+                    </div>
+                    <div class="meta-box full">
+                        <div class="meta-title">Preprocessed Text</div>
+                        <div class="meta-value" id="metaPreprocessed"
+                             style="font-style:italic; color:#888;"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- How It Works -->
-  <div class="how-card">
-    <h2>How It Works</h2>
-    <div class="steps">
-      <div class="step">
-        <div class="step-icon">📝</div>
-        <div class="step-title">Input Text</div>
-        <div class="step-desc">Raw comment from online platform</div>
-      </div>
-      <div class="step">
-        <div class="step-icon">⚙️</div>
-        <div class="step-title">Preprocessing</div>
-        <div class="step-desc">7-step cleaning pipeline</div>
-      </div>
-      <div class="step">
-        <div class="step-icon">🔢</div>
-        <div class="step-title">TF-IDF</div>
-        <div class="step-desc">5,000 feature vectors</div>
-      </div>
-      <div class="step">
-        <div class="step-icon">🤖</div>
-        <div class="step-title">SVM Model</div>
-        <div class="step-desc">Binary classification output</div>
-      </div>
+    <!-- History -->
+    <div class="history-section">
+        <div class="history-header">
+            <h2>Analysis History</h2>
+            <button class="btn-clear-history" onclick="clearHistory()">
+                Clear History
+            </button>
+        </div>
+        <div id="historyList">
+            <div class="history-empty">
+                No analyses yet. Enter text above to get started.
+            </div>
+        </div>
     </div>
-  </div>
 
-</main>
+</div>
 
 <footer>
-  IUC — SEAS — Computer Science Engineering | Fullstack Development Track | 2025–2026
+    <p>Fosso Temfack Mirenda Cassidy & Fongang Ngnijiko Helene Grace</p>
+    <p>Institut Universitaire de la Côte — Final Year Project 2026</p>
 </footer>
 
 <script>
-const API = 'http://127.0.0.1:5000';
+    const API_URL = "http://localhost:5000";
+    let stats = { total: 0, normal: 0, offensive: 0, hate: 0 };
 
-function updateCount() {
-  const text = document.getElementById('commentInput').value;
-  document.getElementById('charCount').textContent = text.length;
-}
+    // Health check on load
+    window.onload = async function() {
+        try {
+            const res = await fetch(`${API_URL}/health`);
+            if (res.ok) {
+                const badge = document.getElementById("statusBadge");
+                badge.textContent = "● API Online";
+                badge.style.color = "#2ecc71";
+                badge.style.borderColor = "#2ecc71";
+                badge.style.background = "#1a3a2a";
+            }
+        } catch (e) {
+            const badge = document.getElementById("statusBadge");
+            badge.textContent = "● API Offline";
+            badge.style.color = "#e74c3c";
+            badge.style.borderColor = "#e74c3c";
+            badge.style.background = "#2a0a0a";
+        }
+    };
 
-async function analyzeComment() {
-  const text = document.getElementById('commentInput').value.trim();
-  if (!text) { alert('Please enter a comment to analyze.'); return; }
+    async function analyzeText() {
+        const text = document.getElementById("inputText").value.trim();
+        if (!text) {
+            alert("Please enter some text to analyze.");
+            return;
+        }
 
-  const btn = document.getElementById('analyzeBtn');
-  const loading = document.getElementById('loading');
-  const resultBox = document.getElementById('resultBox');
+        document.getElementById("resultPlaceholder").style.display = "none";
+        document.getElementById("resultDisplay").style.display = "none";
+        document.getElementById("loading").style.display = "block";
 
-  btn.disabled = true;
-  loading.style.display = 'block';
-  resultBox.style.display = 'none';
+        try {
+            const response = await fetch(`${API_URL}/predict`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text })
+            });
 
-  try {
-    const response = await fetch(`${API}/predict`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    });
+            const result = await response.json();
 
-    const data = await response.json();
-    showResult(data);
-  } catch (err) {
-    alert('Cannot connect to API. Make sure api.py is running.');
-  } finally {
-    btn.disabled = false;
-    loading.style.display = 'none';
-  }
-}
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("resultDisplay").style.display = "block";
 
-function showResult(data) {
-  const box = document.getElementById('resultBox');
-  const icon = document.getElementById('resultIcon');
-  const title = document.getElementById('resultTitle');
-  const subtitle = document.getElementById('resultSubtitle');
+            renderResult(result);
+            updateStats(result.label_id);
+            addToHistory(text, result);
 
-  box.className = 'result-box ' + data.label;
-
-  const config = {
-    normal: {
-      icon: '✅',
-      title: 'NORMAL',
-      subtitle: 'This comment does not contain suspicious content.'
-    },
-    offensive: {
-      icon: '⚠️',
-      title: 'OFFENSIVE',
-      subtitle: 'This comment contains offensive or rude language.'
-    },
-    hate_speech: {
-      icon: '🚨',
-      title: 'HATE SPEECH',
-      subtitle: 'This comment contains hate speech targeting a group.'
+        } catch (e) {
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("resultPlaceholder").style.display = "flex";
+            alert("Connection error: " + e.message +
+                  "\nMake sure the API is running (python app.py)");
+        }
     }
-  };
 
-  const c = config[data.label] || config.normal;
-  icon.textContent = c.icon;
-  title.textContent = c.title;
-  subtitle.textContent = c.subtitle;
+    function renderResult(result) {
+        const banner = document.getElementById("verdictBanner");
+        const icon   = document.getElementById("verdictIcon");
+        const label  = document.getElementById("verdictLabel");
+        const sub    = document.getElementById("verdictSub");
+        const pill   = document.getElementById("warningPill");
 
-  document.getElementById('resultOriginal').textContent = data.original_text;
-  document.getElementById('resultPreprocessed').textContent =
-    data.preprocessed_text || '(empty after preprocessing)';
+        // Verdict banner
+        banner.className = "verdict-banner";
+        if (result.label_id === 0) {
+            banner.classList.add("verdict-normal");
+            icon.textContent  = "✅";
+            label.textContent = "Normal Content";
+            sub.textContent   = "This content appears safe.";
+        } else if (result.label_id === 1) {
+            banner.classList.add("verdict-offensive");
+            icon.textContent  = "⚠️";
+            label.textContent = "Offensive Language";
+            sub.textContent   = "This content contains offensive language.";
+        } else {
+            banner.classList.add("verdict-hate");
+            icon.textContent  = "🚨";
+            label.textContent = "Hate Speech";
+            sub.textContent   = "This content has been flagged as hate speech.";
+        }
 
-  box.style.display = 'block';
-}
+        // Warning level pill
+        const wl = result.warning_level || "none";
+        pill.textContent = wl.toUpperCase();
+        pill.className = "warning-pill";
+        if (wl === "high")       pill.classList.add("pill-high");
+        else if (wl === "medium") pill.classList.add("pill-medium");
+        else if (wl === "low")    pill.classList.add("pill-low");
+        else                      pill.classList.add("pill-none");
 
-async function analyzeBatch() {
-  const raw = document.getElementById('batchInput').value.trim();
-  if (!raw) { alert('Please enter at least one comment.'); return; }
+        // Confidence scores — real data from API
+        const scores = result.confidence_scores || {};
+        const normalPct    = ((scores.normal      || 0) * 100).toFixed(1);
+        const offensivePct = ((scores.offensive   || 0) * 100).toFixed(1);
+        const hatePct      = ((scores.hate_speech || 0) * 100).toFixed(1);
 
-  const texts = raw.split('\n').map(t => t.trim()).filter(t => t.length > 0);
-  if (texts.length === 0) { alert('No valid comments found.'); return; }
-  if (texts.length > 100) { alert('Maximum 100 comments at once.'); return; }
+        document.getElementById("scoreNormal").textContent    = normalPct + "%";
+        document.getElementById("scoreOffensive").textContent = offensivePct + "%";
+        document.getElementById("scoreHate").textContent      = hatePct + "%";
 
-  try {
-    const response = await fetch(`${API}/predict/batch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texts })
+        // Animate bars after short delay
+        setTimeout(() => {
+            document.getElementById("barNormal").style.width    = normalPct + "%";
+            document.getElementById("barOffensive").style.width = offensivePct + "%";
+            document.getElementById("barHate").style.width      = hatePct + "%";
+        }, 50);
+
+        // Detection method
+        const method     = result.detection_method || "ml_model";
+        const methodEl   = document.getElementById("metaMethod");
+        if (method === "rule_layer") {
+            methodEl.innerHTML =
+                '<span class="method-rule">⚡ Rule Layer</span>' +
+                (result.matched_keyword
+                    ? ` <span style="color:#555;font-size:0.75rem;">(matched: ${result.matched_keyword})</span>`
+                    : "");
+        } else {
+            methodEl.innerHTML = '<span class="method-ml">🤖 ML Model</span>';
+        }
+
+        // Preprocessed text
+        document.getElementById("metaPreprocessed").textContent =
+            result.preprocessed_text || "—";
+    }
+
+    function updateStats(labelId) {
+        stats.total++;
+        if (labelId === 0)      stats.normal++;
+        else if (labelId === 1) stats.offensive++;
+        else                    stats.hate++;
+
+        document.getElementById("statTotal").textContent     = stats.total;
+        document.getElementById("statNormal").textContent    = stats.normal;
+        document.getElementById("statOffensive").textContent = stats.offensive;
+        document.getElementById("statHate").textContent      = stats.hate;
+    }
+
+    function addToHistory(text, result) {
+        const list  = document.getElementById("historyList");
+        const empty = list.querySelector(".history-empty");
+        if (empty) empty.remove();
+
+        const badges = {
+            0: '<span class="history-badge badge-normal">Normal</span>',
+            1: '<span class="history-badge badge-offensive">Offensive</span>',
+            2: '<span class="history-badge badge-hate">Hate Speech</span>'
+        };
+
+        const method = result.detection_method === "rule_layer"
+            ? "⚡ Rule" : "🤖 ML";
+        const time = new Date().toLocaleTimeString();
+
+        const item = document.createElement("div");
+        item.className = "history-item";
+        item.innerHTML = `
+            ${badges[result.label_id]}
+            <div class="history-text">${text}</div>
+            <div class="history-method">${method}</div>
+            <div class="history-time">${time}</div>
+        `;
+        list.insertBefore(item, list.firstChild);
+
+        const items = list.querySelectorAll(".history-item");
+        if (items.length > 20) items[items.length - 1].remove();
+    }
+
+    function clearInput() {
+        document.getElementById("inputText").value = "";
+        document.getElementById("resultDisplay").style.display  = "none";
+        document.getElementById("resultPlaceholder").style.display = "flex";
+    }
+
+    function clearHistory() {
+        document.getElementById("historyList").innerHTML =
+            '<div class="history-empty">No analyses yet.</div>';
+        stats = { total: 0, normal: 0, offensive: 0, hate: 0 };
+        document.getElementById("statTotal").textContent     = 0;
+        document.getElementById("statNormal").textContent    = 0;
+        document.getElementById("statOffensive").textContent = 0;
+        document.getElementById("statHate").textContent      = 0;
+    }
+
+    document.addEventListener("keydown", function(e) {
+        if (e.ctrlKey && e.key === "Enter") analyzeText();
     });
-
-    const data = await response.json();
-    showBatchResults(data);
-  } catch (err) {
-    alert('Cannot connect to API. Make sure api.py is running.');
-  }
-}
-
-function showBatchResults(data) {
-  const results = data.results;
-  const counts = { normal: 0, offensive: 0, hate_speech: 0 };
-  results.forEach(r => counts[r.label]++);
-
-  document.getElementById('batchSummary').innerHTML = `
-    <div class="batch-stat normal">
-      <div class="num">${counts.normal}</div>
-      <div class="lbl">Normal</div>
-    </div>
-    <div class="batch-stat offensive">
-      <div class="num">${counts.offensive}</div>
-      <div class="lbl">Offensive</div>
-    </div>
-    <div class="batch-stat hate">
-      <div class="num">${counts.hate_speech}</div>
-      <div class="lbl">Hate Speech</div>
-    </div>
-  `;
-
-  const list = document.getElementById('batchList');
-  list.innerHTML = results.map(r => `
-    <div class="batch-item ${r.label}">
-      <span class="batch-label">${r.label.replace('_', ' ')}</span>
-      <span class="batch-text">${r.original_text.substring(0, 100)}${r.original_text.length > 100 ? '...' : ''}</span>
-    </div>
-  `).join('');
-
-  document.getElementById('batchResults').style.display = 'block';
-}
-
-// Allow Enter key to trigger analysis
-document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.key === 'Enter') analyzeComment();
-});
 </script>
+
 </body>
 </html>

@@ -1,4 +1,5 @@
-source,0.0,1.0,2.0
-davidson,4163,19190,1430
-hackernews,40,0,0
-reddit,2850,417,0
+source,0.0,1.0,2.0,All
+davidson,4163,19190,1430,24783
+hackernews,40,0,0,40
+reddit,2850,417,0,3267
+All,7053,19607,1430,28090

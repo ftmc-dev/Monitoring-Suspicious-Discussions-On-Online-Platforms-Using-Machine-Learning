@@ -1,0 +1,17 @@
+================================================================================
+                    ERROR ANALYSIS MATRIX RESULTS REPORT — CONFIG A
+================================================================================
+Total Dataset Elements Reviewed  : 5502
+Observed System Flag Divergences : 4148 (75.39%)
+
+HATE SPEECH EVALUATION DISPOSITION:
+- Target Records Under Review   : 278
+- Captured Correctly            : 5 (1.8%)
+- Leaked to Offensive Category  : 2
+- Leaked to Normal Category     : 271
+
+FALSE ALARMS AND OVER-FLAGGING TRACKING:
+- Total False Positives Raised  : 173
+- Offensive Flagged as Hate     : 109
+- Normal Flagged as Hate        : 64
+================================================================================

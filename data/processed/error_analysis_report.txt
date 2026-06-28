@@ -1,0 +1,46 @@
+
+================================================================================
+ERROR ANALYSIS REPORT — LOGISTIC REGRESSION (SMOTE ONLY)
+================================================================================
+
+Model         : Logistic Regression
+Configuration : SMOTE Only (no class weights)
+Test samples  : 5502
+Total errors  : 639 (11.61%)
+
+--------------------------------------------------------------------------------
+ERROR DISTRIBUTION BY CLASS
+--------------------------------------------------------------------------------
+Normal      : 1380 samples | 134 errors | 9.7% error rate
+Offensive   : 3844 samples | 352 errors | 9.2% error rate
+Hate Speech : 278 samples | 153 errors | 55.0% error rate
+
+--------------------------------------------------------------------------------
+HATE SPEECH ERRORS
+--------------------------------------------------------------------------------
+Total hate samples         : 278
+Correctly identified       : 125 (45.0%)
+Misclassified as Offensive : 129 (46.4%)
+Misclassified as Normal    : 24 (8.6%)
+
+--------------------------------------------------------------------------------
+FALSE POSITIVES
+--------------------------------------------------------------------------------
+Total false positives : 209
+Offensive → Hate      : 185
+Normal → Hate         : 24
+
+--------------------------------------------------------------------------------
+TOP WORDS IN MISCLASSIFIED HATE
+--------------------------------------------------------------------------------
+[('rt', 49), ('bitch', 42), ('that', 21), ('nigga', 21), ('like', 19), ('ass', 18), ('im', 17), ('niggas', 17), ('on', 17), ('be', 17)]
+
+--------------------------------------------------------------------------------
+KEY INSIGHT
+--------------------------------------------------------------------------------
+The main challenge is the vocabulary overlap between hate speech and
+offensive language. 46.4% of hate speech is misclassified as offensive
+because both classes share similar profanity and slur vocabulary.
+Context and group-targeting signals are critical for improvement.
+A keyword rule layer in the API addresses the most obvious missed cases.
+================================================================================

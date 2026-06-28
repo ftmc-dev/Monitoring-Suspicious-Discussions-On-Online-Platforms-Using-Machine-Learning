@@ -457,6 +457,7 @@ class ServerWebApplication(web.Application):
             "websocket_ping_timeout": websocket_ping_timeout,
             # handlers
             "extra_services": extra_services,
+            "nbconvert_csp_sandbox": jupyter_app.nbconvert_csp_sandbox,
             # Jupyter stuff
             "started": now,
             # place for extensions to register activity
@@ -1604,6 +1605,15 @@ class ServerApp(JupyterApp):
         help="""If True, display controls to shut down the Jupyter server, such as menu items or buttons.""",
     )
 
+    nbconvert_csp_sandbox = Bool(
+        True,
+        config=True,
+        help=_i18n(
+            "If True, add a 'sandbox' directive to the Content-Security-Policy header for nbconvert-served pages, "
+            "confining any JavaScript to a unique origin so it cannot interact with the Jupyter server."
+        ),
+    )
+
     contents_manager_class = Type(
         default_value=AsyncLargeFileManager,
         klass=ContentsManager,
@@ -2341,23 +2351,27 @@ class ServerApp(JupyterApp):
             resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
 
     def _get_urlparts(
-        self, path: str | None = None, include_token: bool = False
+        self,
+        path: str | None = None,
+        include_token: bool = False,
+        ip: str | None = None,
     ) -> urllib.parse.ParseResult:
         """Constructs a urllib named tuple, ParseResult,
         with default values set by server config.
         The returned tuple can be manipulated using the `_replace` method.
         """
+        if ip is None:
+            ip = self.ip
         if self.sock:
             scheme = "http+unix"
             netloc = urlencode_unix_socket_path(self.sock)
         else:
-            if not self.ip:
+            # Empty string means "unset", fallback to localhost so the url
+            # is valid e.g. in k8s where gethostname() != localhost #743
+            if not ip:
                 ip = "localhost"
-            # Handle nonexplicit hostname.
-            elif self.ip in ("0.0.0.0", "::"):  # noqa: S104
-                ip = "%s" % socket.gethostname()
             else:
-                ip = f"[{self.ip}]" if ":" in self.ip else self.ip
+                ip = f"[{ip}]" if ":" in ip else ip
             netloc = f"{ip}:{self.port}"
             scheme = "https" if self.certfile else "http"
         if not path:
@@ -2411,6 +2425,23 @@ class ServerApp(JupyterApp):
     def connection_url(self) -> str:
         urlparts = self._get_urlparts(path=self.base_url)
         return urlparts.geturl()
+
+    @property
+    def connect_url(self) -> str:
+        """Human readable string with URLs for connecting to the running
+        Jupyter Server.
+
+        If `ip` is the wildcard address, add a text hint but keep
+        the machine hostname in the link as 0.0.0.0 is not connectable.
+        """
+        if self.ip not in ("0.0.0.0", "::"):  # noqa: S104
+            return self.display_url
+        public = self._get_urlparts(include_token=True, ip=socket.gethostname()).geturl()
+        hint = _i18n(
+            "The server is listening on all interfaces, "
+            "so any hostname or IP of this machine will work."
+        )
+        return f"{public}\n    {self.local_url}\n{hint}"
 
     def init_signal(self) -> None:
         """Initialize signal handlers."""
@@ -2691,6 +2722,9 @@ class ServerApp(JupyterApp):
         for port in random_ports(self.port, self.port_retries + 1):
             try:
                 sockets = bind_sockets(port, self.ip)
+                # When port=0 the OS assigns a free port, so we read it back here.
+                if port == 0:
+                    port = sockets[0].getsockname()[1]
                 for s in sockets:
                     s.close()
             except OSError as e:
@@ -3138,7 +3172,7 @@ class ServerApp(JupyterApp):
                     message = [
                         "\n",
                         _i18n("To access the server, copy and paste one of these URLs:"),
-                        "    %s" % self.display_url,
+                        "    %s" % self.connect_url,
                     ]
                 else:
                     message = [
@@ -3150,7 +3184,7 @@ class ServerApp(JupyterApp):
                         _i18n(
                             "Or copy and paste one of these URLs:",
                         ),
-                        "    %s" % self.display_url,
+                        "    %s" % self.connect_url,
                     ]
 
                 self.log.critical("\n".join(message))
