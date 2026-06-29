@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Monitoring Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 18px 40px;
+            border-bottom: 2px solid #0f3460;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; }
+
+        .brand-logo {
+            background: #e94560;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+        }
+
+        .brand-text h1 {
+            font-size: 1.2rem;
+            color: #e94560;
+            font-weight: 700;
+        }
+
+        .brand-text p {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            background: #2a2a4a;
+            border: 1px solid #3a3a5a;
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #3a3a5a;
+            color: #e0e0e0;
+        }
+
+        .status-badge {
+            background: #1a3a2a;
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        /* ── Container ── */
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* ── Stats bar ── */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .label {
+            font-size: 0.72rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .stat-total    { color: #3498db; }
+        .stat-high     { color: #e74c3c; }
+        .stat-medium   { color: #e67e22; }
+        .stat-low      { color: #f1c40f; }
+        .stat-reviewed { color: #2ecc71; }
+
+        /* ── Controls ── */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .controls-left {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .filter-btn {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            color: #888;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover  { border-color: #e94560; color: #e0e0e0; }
+        .filter-btn.active { background: #e94560; border-color: #e94560; color: white; }
+
+        .btn-clear-all {
+            background: transparent;
+            border: 1px solid #3a1a1a;
+            color: #e74c3c;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-clear-all:hover { background: #2a0a0a; }
+
+        .btn-refresh {
+            background: #1a2a3a;
+            border: 1px solid #2a3a4a;
+            color: #3498db;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-refresh:hover { background: #1a3a4a; }
+
+        /* ── Queue table ── */
+        .queue-section {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .queue-header {
+            padding: 18px 25px;
+            border-bottom: 1px solid #2a2a4a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .queue-header h2 {
+            font-size: 0.85rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .queue-count {
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead tr {
+            background: #0f0f1a;
+        }
+
+        thead th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.72rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        tbody tr {
+            border-top: 1px solid #2a2a4a;
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+
+        tbody tr:hover { background: #16162a; }
+
+        tbody tr.reviewed-row { opacity: 0.45; }
+
+        tbody td {
+            padding: 14px 16px;
+            font-size: 0.85rem;
+            vertical-align: middle;
+        }
+
+        /* Risk indicator */
+        .risk-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .risk-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .risk-high   { background: #e74c3c; box-shadow: 0 0 6px #e74c3c; }
+        .risk-medium { background: #e67e22; box-shadow: 0 0 6px #e67e22; }
+        .risk-low    { background: #f1c40f; box-shadow: 0 0 6px #f1c40f; }
+        .risk-none   { background: #2ecc71; }
+
+        .risk-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .risk-label-high   { color: #e74c3c; }
+        .risk-label-medium { color: #e67e22; }
+        .risk-label-low    { color: #f1c40f; }
+        .risk-label-none   { color: #2ecc71; }
+
+        /* Message text */
+        .msg-text {
+            max-width: 280px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #ccc;
+        }
+
+        /* Category badge */
+        .cat-badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-normal    { background: #1a3a2a; color: #2ecc71; }
+        .badge-offensive { background: #3a2a1a; color: #e67e22; }
+        .badge-hate      { background: #3a1a1a; color: #e74c3c; }
+
+        /* Confidence score bar inline */
+        .score-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 120px;
+        }
+
+        .mini-bar-bg {
+            flex: 1;
+            background: #0f0f1a;
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .mini-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .bar-hate      { background: #e74c3c; }
+        .bar-offensive { background: #e67e22; }
+        .bar-normal    { background: #2ecc71; }
+
+        .score-pct {
+            font-size: 0.78rem;
+            font-weight: 600;
+            min-width: 36px;
+            text-align: right;
+        }
+
+        /* Method badge */
+        .method-rule { color: #f1c40f; font-size: 0.78rem; }
+        .method-ml   { color: #3498db; font-size: 0.78rem; }
+
+        /* Time */
+        .time-cell { color: #555; font-size: 0.78rem; white-space: nowrap; }
+
+        /* Action buttons */
+        .action-cell {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-view {
+            background: #1a2a3a;
+            border: 1px solid #2a3a4a;
+            color: #3498db;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-view:hover { background: #1a3a4a; }
+
+        .btn-done {
+            background: #1a3a2a;
+            border: 1px solid #2a4a3a;
+            color: #2ecc71;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-done:hover { background: #1a4a2a; }
+
+        .btn-dismiss {
+            background: #2a1a1a;
+            border: 1px solid #4a2a2a;
+            color: #e74c3c;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-dismiss:hover { background: #3a1a1a; }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #444;
+        }
+
+        .empty-icon { font-size: 3rem; margin-bottom: 15px; }
+        .empty-state p { font-size: 0.9rem; }
+        .empty-state a { color: #e94560; text-decoration: none; }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.97); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+
+        .modal-close {
+            background: #2a2a4a;
+            border: none;
+            color: #aaa;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover { background: #3a3a5a; color: #e0e0e0; }
+
+        .modal-section { margin-bottom: 20px; }
+
+        .modal-label {
+            font-size: 0.7rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .modal-message {
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 0.9rem;
+            color: #ccc;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .modal-verdict {
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .verdict-normal    { background: #0d2a1a; border: 1px solid #2ecc71; color: #2ecc71; }
+        .verdict-offensive { background: #2a1a0a; border: 1px solid #e67e22; color: #e67e22; }
+        .verdict-hate      { background: #2a0a0a; border: 1px solid #e74c3c; color: #e74c3c; }
+
+        /* Modal confidence bars */
+        .modal-score-row { margin-bottom: 10px; }
+
+        .modal-score-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.82rem;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .modal-score-info .pct {
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .modal-bar-bg {
+            background: #0f0f1a;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #2a2a4a;
+        }
+
+        .modal-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .modal-meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .modal-meta-box {
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+
+        .modal-meta-box.full { grid-column: span 2; }
+
+        .modal-meta-title {
+            font-size: 0.68rem;
+            color: #555;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .modal-meta-value {
+            font-size: 0.82rem;
+            color: #ccc;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .modal-btn:hover { opacity: 0.85; }
+
+        .btn-modal-done    { background: #2ecc71; color: #0f0f1a; }
+        .btn-modal-dismiss { background: #e74c3c; color: white; }
+        .btn-modal-close   { background: #2a2a4a; color: #aaa; }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #333;
+            font-size: 0.8rem;
+            margin-top: 40px;
+            border-top: 1px solid #1a1a2e;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <div class="brand-logo">🛡️</div>
+        <div class="brand-text">
+            <h1>Admin Monitoring Dashboard</h1>
+            <p>Suspicious Discussion Queue — Sorted by Risk Level</p>
+        </div>
+    </div>
+    <div class="header-right">
+        <a href="index.html" class="nav-btn">← Back to Detector</a>
+        <div class="status-badge" id="statusBadge">● Live</div>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="number stat-total" id="statTotal">0</div>
+            <div class="label">Total Flagged</div>
+        </div>
+        <div class="stat-card">
+            <div class="number stat-high" id="statHigh">0</div>
+            <div class="label">High Risk</div>
+        </div>
+        <div class="stat-card">
+            <div class="number stat-medium" id="statMedium">0</div>
+            <div class="label">Medium Risk</div>
+        </div>
+        <div class="stat-card">
+            <div class="number stat-low" id="statLow">0</div>
+            <div class="label">Low Risk</div>
+        </div>
+        <div class="stat-card">
+            <div class="number stat-reviewed" id="statReviewed">0</div>
+            <div class="label">Reviewed</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="controls-left">
+            <button class="filter-btn active" onclick="setFilter('all', this)">
+                All
+            </button>
+            <button class="filter-btn" onclick="setFilter('high', this)">
+                🔴 High
+            </button>
+            <button class="filter-btn" onclick="setFilter('medium', this)">
+                🟠 Medium
+            </button>
+            <button class="filter-btn" onclick="setFilter('low', this)">
+                🟡 Low
+            </button>
+            <button class="filter-btn" onclick="setFilter('pending', this)">
+                ⏳ Pending
+            </button>
+        </div>
+        <button class="btn-refresh" onclick="loadQueue()">🔄 Refresh</button>
+        <button class="btn-clear-all" onclick="clearAll()">🗑 Clear All</button>
+    </div>
+
+    <!-- Queue Table -->
+    <div class="queue-section">
+        <div class="queue-header">
+            <h2>Flagged Messages Queue</h2>
+            <span class="queue-count" id="queueCount">0 messages</span>
+        </div>
+
+        <div id="tableContainer">
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>No flagged messages yet.<br>
+                <a href="index.html">Go to the Detector</a> and analyze some text.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    <p>Fosso Temfack Mirenda Cassidy & Fongang Ngnijiko Helene Grace</p>
+    <p>Institut Universitaire de la Côte — Final Year Project 2026</p>
+</footer>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+    <div class="modal" id="modal">
+        <div class="modal-header">
+            <div class="modal-title">Message Detail</div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+
+        <div class="modal-section">
+            <div class="modal-label">Full Message</div>
+            <div class="modal-message" id="modalText"></div>
+        </div>
+
+        <div class="modal-section">
+            <div id="modalVerdict" class="modal-verdict"></div>
+
+            <div class="modal-label">Confidence Scores</div>
+
+            <div class="modal-score-row">
+                <div class="modal-score-info">
+                    <span>Normal</span>
+                    <span class="pct" id="modalScoreNormal">0%</span>
+                </div>
+                <div class="modal-bar-bg">
+                    <div class="modal-bar-fill" id="modalBarNormal"
+                         style="background:#2ecc71; width:0%"></div>
+                </div>
+            </div>
+
+            <div class="modal-score-row">
+                <div class="modal-score-info">
+                    <span>Offensive</span>
+                    <span class="pct" id="modalScoreOffensive">0%</span>
+                </div>
+                <div class="modal-bar-bg">
+                    <div class="modal-bar-fill" id="modalBarOffensive"
+                         style="background:#e67e22; width:0%"></div>
+                </div>
+            </div>
+
+            <div class="modal-score-row">
+                <div class="modal-score-info">
+                    <span>Hate Speech</span>
+                    <span class="pct" id="modalScoreHate">0%</span>
+                </div>
+                <div class="modal-bar-bg">
+                    <div class="modal-bar-fill" id="modalBarHate"
+                         style="background:#e74c3c; width:0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <div class="modal-label">Processing Details</div>
+            <div class="modal-meta-grid">
+                <div class="modal-meta-box">
+                    <div class="modal-meta-title">Detection Method</div>
+                    <div class="modal-meta-value" id="modalMethod"></div>
+                </div>
+                <div class="modal-meta-box">
+                    <div class="modal-meta-title">Timestamp</div>
+                    <div class="modal-meta-value" id="modalTime"></div>
+                </div>
+                <div class="modal-meta-box full">
+                    <div class="modal-meta-title">Preprocessed Text</div>
+                    <div class="modal-meta-value"
+                         id="modalPreprocessed"
+                         style="font-style:italic; color:#666;"></div>
+                </div>
+                <div class="modal-meta-box full" id="modalKeywordBox"
+                     style="display:none;">
+                    <div class="modal-meta-title">Matched Keyword</div>
+                    <div class="modal-meta-value"
+                         id="modalKeyword"
+                         style="color:#f1c40f;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="modal-btn btn-modal-done"
+                    id="modalBtnDone"
+                    onclick="markReviewedFromModal()">
+                ✓ Mark Reviewed
+            </button>
+            <button class="modal-btn btn-modal-dismiss"
+                    onclick="dismissFromModal()">
+                ✕ Dismiss
+            </button>
+            <button class="modal-btn btn-modal-close"
+                    onclick="closeModal()">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentFilter = "all";
+    let currentModalId = null;
+
+    // ── Load and render queue ─────────────────────────────
+    function loadQueue() {
+        const queue = getQueue();
+        renderStats(queue);
+        renderTable(queue);
+    }
+
+    function getQueue() {
+        return JSON.parse(localStorage.getItem("adminQueue") || "[]");
+    }
+
+    function saveQueue(queue) {
+        localStorage.setItem("adminQueue", JSON.stringify(queue));
+    }
+
+    function renderStats(queue) {
+        const total    = queue.length;
+        const high     = queue.filter(m => m.warning_level === "high").length;
+        const medium   = queue.filter(m => m.warning_level === "medium").length;
+        const low      = queue.filter(m => m.warning_level === "low").length;
+        const reviewed = queue.filter(m => m.reviewed).length;
+
+        document.getElementById("statTotal").textContent    = total;
+        document.getElementById("statHigh").textContent     = high;
+        document.getElementById("statMedium").textContent   = medium;
+        document.getElementById("statLow").textContent      = low;
+        document.getElementById("statReviewed").textContent = reviewed;
+    }
+
+    function renderTable(queue) {
+        const container = document.getElementById("tableContainer");
+
+        // Apply filter
+        let filtered = [...queue];
+        if (currentFilter === "high")    filtered = queue.filter(m => m.warning_level === "high");
+        if (currentFilter === "medium")  filtered = queue.filter(m => m.warning_level === "medium");
+        if (currentFilter === "low")     filtered = queue.filter(m => m.warning_level === "low");
+        if (currentFilter === "pending") filtered = queue.filter(m => !m.reviewed);
+
+        // Sort by risk: high → medium → low, then by hate confidence desc
+        const riskOrder = { high: 0, medium: 1, low: 2, none: 3 };
+        filtered.sort((a, b) => {
+            const riskDiff = (riskOrder[a.warning_level] || 3)
+                           - (riskOrder[b.warning_level] || 3);
+            if (riskDiff !== 0) return riskDiff;
+            const aScore = (a.confidence.hate_speech || 0)
+                         + (a.confidence.offensive   || 0);
+            const bScore = (b.confidence.hate_speech || 0)
+                         + (b.confidence.offensive   || 0);
+            return bScore - aScore;
+        });
+
+        document.getElementById("queueCount").textContent =
+            `${filtered.length} message${filtered.length !== 1 ? "s" : ""}`;
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📭</div>
+                    <p>No messages match this filter.<br>
+                    <a href="index.html">Go to the Detector</a> to analyze text.</p>
+                </div>`;
+            return;
+        }
+
+        // Build table
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Risk</th>
+                        <th>Message</th>
+                        <th>Category</th>
+                        <th>Hate Score</th>
+                        <th>Method</th>
+                        <th>Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        filtered.forEach(msg => {
+            const riskClass  = `risk-${msg.warning_level || "none"}`;
+            const labelClass = msg.label_id === 2 ? "badge-hate"
+                             : msg.label_id === 1 ? "badge-offensive"
+                             : "badge-normal";
+
+            const hateScore  = ((msg.confidence.hate_speech || 0) * 100).toFixed(0);
+            const offScore   = ((msg.confidence.offensive   || 0) * 100).toFixed(0);
+            const barWidth   = Math.max(parseInt(hateScore), parseInt(offScore));
+            const barColor   = msg.label_id === 2 ? "bar-hate" : "bar-offensive";
+
+            const method     = msg.detection_method === "rule_layer"
+                             ? '<span class="method-rule">⚡ Rule</span>'
+                             : '<span class="method-ml">🤖 ML</span>';
+
+            const timeStr    = new Date(msg.timestamp)
+                             .toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+
+            const rowClass   = msg.reviewed ? "reviewed-row" : "";
+            const doneLabel  = msg.reviewed ? "✓ Done" : "Mark Done";
+
+            html += `
+                <tr class="${rowClass}" onclick="openModal(${msg.id})">
+                    <td>
+                        <div class="risk-cell">
+                            <div class="risk-dot ${riskClass}"></div>
+                            <span class="risk-label risk-label-${msg.warning_level || 'none'}">
+                                ${(msg.warning_level || "none").toUpperCase()}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="msg-text">${escapeHtml(msg.text)}</div>
+                    </td>
+                    <td>
+                        <span class="cat-badge ${labelClass}">${msg.prediction}</span>
+                    </td>
+                    <td>
+                        <div class="score-cell">
+                            <div class="mini-bar-bg">
+                                <div class="mini-bar-fill ${barColor}"
+                                     style="width:${barWidth}%"></div>
+                            </div>
+                            <span class="score-pct">${barWidth}%</span>
+                        </div>
+                    </td>
+                    <td>${method}</td>
+                    <td class="time-cell">${timeStr}</td>
+                    <td>
+                        <div class="action-cell" onclick="event.stopPropagation()">
+                            <button class="btn-view"
+                                    onclick="openModal(${msg.id})">🔍</button>
+                            <button class="btn-done"
+                                    onclick="markReviewed(${msg.id})">✓</button>
+                            <button class="btn-dismiss"
+                                    onclick="dismiss(${msg.id})">✕</button>
+                        </div>
+                    </td>
+                </tr>`;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    // ── Filter ────────────────────────────────────────────
+    function setFilter(filter, btn) {
+        currentFilter = filter;
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        loadQueue();
+    }
+
+    // ── Actions ───────────────────────────────────────────
+    function markReviewed(id) {
+        const queue = getQueue();
+        const item  = queue.find(m => m.id === id);
+        if (item) { item.reviewed = true; saveQueue(queue); loadQueue(); }
+    }
+
+    function dismiss(id) {
+        const queue = getQueue().filter(m => m.id !== id);
+        saveQueue(queue);
+        loadQueue();
+    }
+
+    function clearAll() {
+        if (confirm("Clear all flagged messages from the queue?")) {
+            localStorage.removeItem("adminQueue");
+            loadQueue();
+        }
+    }
+
+    // ── Modal ─────────────────────────────────────────────
+    function openModal(id) {
+        const queue = getQueue();
+        const msg   = queue.find(m => m.id === id);
+        if (!msg) return;
+
+        currentModalId = id;
+
+        document.getElementById("modalText").textContent = msg.text;
+
+        // Verdict banner
+        const verdict   = document.getElementById("modalVerdict");
+        verdict.className = "modal-verdict";
+        if (msg.label_id === 0) {
+            verdict.classList.add("verdict-normal");
+            verdict.innerHTML = "✅ Normal Content";
+        } else if (msg.label_id === 1) {
+            verdict.classList.add("verdict-offensive");
+            verdict.innerHTML = "⚠️ Offensive Language";
+        } else {
+            verdict.classList.add("verdict-hate");
+            verdict.innerHTML = "🚨 Hate Speech";
+        }
+
+        // Confidence scores
+        const normalPct  = ((msg.confidence.normal      || 0) * 100).toFixed(1);
+        const offPct     = ((msg.confidence.offensive   || 0) * 100).toFixed(1);
+        const hatePct    = ((msg.confidence.hate_speech || 0) * 100).toFixed(1);
+
+        document.getElementById("modalScoreNormal").textContent    = normalPct + "%";
+        document.getElementById("modalScoreOffensive").textContent = offPct + "%";
+        document.getElementById("modalScoreHate").textContent      = hatePct + "%";
+
+        setTimeout(() => {
+            document.getElementById("modalBarNormal").style.width    = normalPct + "%";
+            document.getElementById("modalBarOffensive").style.width = offPct + "%";
+            document.getElementById("modalBarHate").style.width      = hatePct + "%";
+        }, 50);
+
+        // Method
+        const methodEl = document.getElementById("modalMethod");
+        methodEl.innerHTML = msg.detection_method === "rule_layer"
+            ? '<span class="method-rule">⚡ Rule Layer</span>'
+            : '<span class="method-ml">🤖 ML Model</span>';
+
+        // Time
+        document.getElementById("modalTime").textContent =
+            new Date(msg.timestamp).toLocaleString();
+
+        // Preprocessed text
+        document.getElementById("modalPreprocessed").textContent =
+            msg.preprocessed || "—";
+
+        // Keyword
+        const kwBox = document.getElementById("modalKeywordBox");
+        if (msg.matched_keyword) {
+            kwBox.style.display = "block";
+            document.getElementById("modalKeyword").textContent =
+                `"${msg.matched_keyword}"`;
+        } else {
+            kwBox.style.display = "none";
+        }
+
+        // Mark reviewed button state
+        const doneBtn = document.getElementById("modalBtnDone");
+        doneBtn.textContent = msg.reviewed ? "✓ Already Reviewed" : "✓ Mark Reviewed";
+        doneBtn.disabled    = msg.reviewed;
+
+        document.getElementById("modalOverlay").classList.add("open");
+    }
+
+    function closeModal() {
+        document.getElementById("modalOverlay").classList.remove("open");
+        document.getElementById("modalBarNormal").style.width    = "0%";
+        document.getElementById("modalBarOffensive").style.width = "0%";
+        document.getElementById("modalBarHate").style.width      = "0%";
+        currentModalId = null;
+    }
+
+    function closeModalOutside(e) {
+        if (e.target === document.getElementById("modalOverlay")) closeModal();
+    }
+
+    function markReviewedFromModal() {
+        if (currentModalId) {
+            markReviewed(currentModalId);
+            closeModal();
+        }
+    }
+
+    function dismissFromModal() {
+        if (currentModalId) {
+            dismiss(currentModalId);
+            closeModal();
+        }
+    }
+
+    // ── Utility ───────────────────────────────────────────
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    // ── Init ──────────────────────────────────────────────
+    loadQueue();
+
+    // Auto-refresh every 10 seconds
+    setInterval(loadQueue, 10000);
+</script>
+
+</body>
+</html>

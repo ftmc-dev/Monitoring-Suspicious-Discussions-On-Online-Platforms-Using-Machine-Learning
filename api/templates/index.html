@@ -821,6 +821,35 @@
     document.addEventListener("keydown", function(e) {
         if (e.ctrlKey && e.key === "Enter") analyzeText();
     });
+
+    function addToHistory(text, result) {
+        addToHistory(text, result);
+        saveToAdminQueue(text, result);  // ← add this line
+    }
+        function saveToAdminQueue(text, result) {
+    // Only save suspicious messages to admin queue
+    if (!result.is_suspicious) return;
+
+    const queue = JSON.parse(localStorage.getItem("adminQueue") || "[]");
+
+    queue.push({
+        id             : Date.now(),
+        text           : text,
+        prediction     : result.prediction,
+        label_id       : result.label_id,
+        warning_level  : result.warning_level  || "none",
+        detection_method: result.detection_method || "ml_model",
+        matched_keyword: result.matched_keyword || null,
+        preprocessed   : result.preprocessed_text || "",
+        confidence     : result.confidence_scores || {},
+        timestamp      : new Date().toISOString(),
+        reviewed       : false
+    });
+
+    // Keep only last 100 flagged messages
+    if (queue.length > 100) queue.shift();
+    localStorage.setItem("adminQueue", JSON.stringify(queue));
+}
 </script>
 
 </body>
