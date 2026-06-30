@@ -42,8 +42,6 @@ LABEL_DISPLAY = {
 }
 
 # ── Keyword Rule Layer ────────────────────────────────────────────────
-# Fires BEFORE the ML model to catch obvious insults the model misses
-# due to training data ambiguity (e.g. "idiot" in Normal examples)
 OFFENSIVE_KEYWORDS = [
     "idiot", "stupid", "moron", "dumb", "fool", "imbecile",
     "retard", "retarded", "dumbass", "jackass", "asshole",
@@ -51,6 +49,25 @@ OFFENSIVE_KEYWORDS = [
     "shut up", "go to hell", "go die", "kill yourself",
     "you suck", "piece of shit", "piece of garbage"
 ]
+
+# ── Safe Phrase Override ──────────────────────────────────────────────
+# Short, common positive/neutral expressions the model misclassifies
+# due to spurious word-offensive co-occurrence in the Twitter training data
+# (e.g. "love" appears in 84% offensive tweets in Davidson because it
+# co-occurs with profanity, not because "love" itself is offensive).
+SAFE_PHRASES = [
+    "i love you", "i love this", "have a nice day", "have a good day",
+    "this is great", "this is amazing", "thank you", "good morning",
+    "good night", "i like this", "this is beautiful", "well done",
+    "congratulations", "happy birthday", "i appreciate you"
+]
+
+def safe_phrase_check(text):
+    lowered = text.lower().strip()
+    for phrase in SAFE_PHRASES:
+        if phrase in lowered:
+            return True
+    return False
 
 def keyword_check(text):
     """
@@ -65,10 +82,6 @@ def keyword_check(text):
 
 # ── Warning Level ─────────────────────────────────────────────────────
 def get_warning_level(label_id, proba):
-    """
-    Returns warning level string based on predicted class and probabilities.
-    proba: array [normal_prob, offensive_prob, hate_prob]
-    """
     if label_id == 2:
         return "high"
     if label_id == 1:
@@ -78,7 +91,6 @@ def get_warning_level(label_id, proba):
     return "none"
 
 def scores_to_dict(proba):
-    """Convert predict_proba array to labeled dict."""
     return {
         "normal":      round(float(proba[0]), 4),
         "offensive":   round(float(proba[1]), 4),
@@ -87,11 +99,6 @@ def scores_to_dict(proba):
 
 # ── Text Preprocessing ────────────────────────────────────────────────
 def clean_input(text):
-    """
-    Cleans input text to match the preprocessing applied during training.
-    Steps: lowercase → remove URLs → remove mentions → remove hashtags
-           → remove non-letter characters → normalize whitespace
-    """
     text = str(text).lower()
     text = re.sub(r"http\S+|www\S+", "", text)
     text = re.sub(r"@\w+", "", text)
@@ -109,7 +116,7 @@ def home():
         "message":      "Hate Speech Detection API",
         "project":      "Monitoring Suspicious Discussions on Online Platforms Using Machine Learning",
         "authors":      "Fongang Ngnijiko Helene Grace & Fosso Temfack Mirenda Cassidy",
-        "architecture": f"{type(model).__name__} (SMOTE Only) + Keyword Rule Layer",
+        "architecture": f"{type(model).__name__} (SMOTE Only) + Keyword Rule Layer + Safe Phrase Override",
         "endpoints": {
             "POST /predict":       "Single text evaluation",
             "POST /predict/batch": "Batch evaluation (max 100 entries)",
@@ -120,12 +127,13 @@ def home():
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
-        "status":            "healthy",
-        "model_loaded":      True,
-        "model_type":        type(model).__name__,
+        "status":             "healthy",
+        "model_loaded":       True,
+        "model_type":         type(model).__name__,
         "classes_registered": list(LABEL_DISPLAY.values()),
-        "rule_layer_active": True,
-        "keyword_count":     len(OFFENSIVE_KEYWORDS)
+        "rule_layer_active":  True,
+        "keyword_count":      len(OFFENSIVE_KEYWORDS),
+        "safe_phrase_count":  len(SAFE_PHRASES)
     })
 
 @app.route("/predict", methods=["POST"])
@@ -144,7 +152,9 @@ def predict():
 
     cleaned = clean_input(text)
 
-    # Fallback for empty text after cleaning
+    print(f"DEBUG cleaned: '{cleaned}'")
+    print(f"DEBUG safe_check: {safe_phrase_check(cleaned)}")
+
     if len(cleaned.strip()) == 0:
         return jsonify({
             "prediction":        "Normal",
@@ -159,13 +169,27 @@ def predict():
             "notes":             "No meaningful content after preprocessing"
         })
 
-    # ── Step 1: Keyword rule layer ────────────────────────
-    keyword_hit, matched_word = keyword_check(cleaned)
-
-    # Get ML scores regardless (for confidence scores in response)
+    # Get ML scores once, reused everywhere below
     vector      = vectorizer.transform([cleaned])
     ml_label_id = int(model.predict(vector)[0])
     proba       = model.predict_proba(vector)[0]
+
+    # ── Step 0: Safe phrase override ──────────────────────
+    if safe_phrase_check(cleaned):
+        return jsonify({
+            "prediction":        "Normal",
+            "label":             "normal",
+            "label_id":          0,
+            "is_suspicious":     False,
+            "warning_level":     "none",
+            "confidence_scores": scores_to_dict(proba),
+            "original_text":     text,
+            "preprocessed_text": cleaned,
+            "detection_method":  "safe_phrase_override"
+        })
+
+    # ── Step 1: Keyword rule layer ────────────────────────
+    keyword_hit, matched_word = keyword_check(cleaned)
 
     if keyword_hit:
         return jsonify({
@@ -233,10 +257,26 @@ def predict_batch():
             })
             continue
 
-        keyword_hit, matched_word = keyword_check(cleaned_version)
         proba       = all_proba[idx]
         ml_label_id = int(ml_predictions[idx])
 
+        # Safe phrase override
+        if safe_phrase_check(cleaned_version):
+            results.append({
+                "prediction":        "Normal",
+                "label":             "normal",
+                "label_id":          0,
+                "is_suspicious":     False,
+                "warning_level":     "none",
+                "confidence_scores": scores_to_dict(proba),
+                "original_text":     orig_text,
+                "preprocessed_text": cleaned_version,
+                "detection_method":  "safe_phrase_override"
+            })
+            continue
+
+        # Keyword rule layer
+        keyword_hit, matched_word = keyword_check(cleaned_version)
         if keyword_hit:
             results.append({
                 "prediction":        "Offensive",
