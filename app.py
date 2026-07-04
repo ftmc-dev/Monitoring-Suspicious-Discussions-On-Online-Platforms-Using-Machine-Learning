@@ -11,8 +11,9 @@ import joblib
 from datetime import datetime
 import numpy as np
 
-model = joblib.load('model.pkl')
-vectorizer = joblib.load('vectorizer.pkl')
+model = joblib.load('models/best_model.pkl')
+vectorizer = joblib.load('models/tfidf_vectorizer.pkl')
+print(model.classes_)
 
 app = Flask(__name__)
 CORS(app)  # Allow all origins
