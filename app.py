@@ -472,10 +472,7 @@ def api_test_save():
 # ======================================================================
 
 import joblib
-
-model = joblib.load('model.pkl')
-vectorizer = joblib.load('vectorizer.pkl')
-
+model = joblib.load('models/best_model.pkl')
 
 # ======================================================================
 # Replace your ENTIRE existing /predict route with this whole function
