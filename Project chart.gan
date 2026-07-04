@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><project name="Untitled Gantt Project" company="" webLink="http://" view-date="2026-03-03" view-index="0" gantt-divider-location="201" resource-divider-location="300" version="3.3.3316" locale="fr_CM">
+    <description/>
+    <view zooming-state="default:2" id="gantt-chart">
+        <field id="tpd3" name="Name" width="114" order="0"/>
+        <field id="tpd4" name="Begin date" width="43" order="1"/>
+        <field id="tpd5" name="End date" width="43" order="2"/>
+        <field id="tpd15" name="Notes" width="20" order="3"/>
+        <option id="filter.completedTasks" value="false"/>
+        <option id="filter.dueTodayTasks" value="false"/>
+        <option id="filter.overdueTasks" value="false"/>
+        <option id="filter.inProgressTodayTasks" value="false"/>
+    </view>
+    <view id="resource-table">
+        <field id="0" name="Name" width="210" order="0"/>
+        <field id="1" name="Default role" width="86" order="1"/>
+    </view>
+    <!-- -->
+    <calendars>
+        <day-types>
+            <day-type id="0"/>
+            <day-type id="1"/>
+            <default-week id="1" name="default" sun="1" mon="0" tue="0" wed="0" thu="0" fri="0" sat="1"/>
+            <only-show-weekends value="false"/>
+            <overriden-day-types/>
+            <days/>
+        </day-types>
+    </calendars>
+    <tasks empty-milestones="true">
+        <taskproperties>
+            <taskproperty id="tpd0" name="type" type="default" valuetype="icon"/>
+            <taskproperty id="tpd1" name="priority" type="default" valuetype="icon"/>
+            <taskproperty id="tpd2" name="info" type="default" valuetype="icon"/>
+            <taskproperty id="tpd3" name="name" type="default" valuetype="text"/>
+            <taskproperty id="tpd4" name="begindate" type="default" valuetype="date"/>
+            <taskproperty id="tpd5" name="enddate" type="default" valuetype="date"/>
+            <taskproperty id="tpd6" name="duration" type="default" valuetype="int"/>
+            <taskproperty id="tpd7" name="completion" type="default" valuetype="int"/>
+            <taskproperty id="tpd8" name="coordinator" type="default" valuetype="text"/>
+            <taskproperty id="tpd9" name="predecessorsr" type="default" valuetype="text"/>
+        </taskproperties>
+        <task id="1" uid="46688334c5d44069b2fc005183681647" name="Determine project objectives, goals, and scope" meeting="false" start="2026-01-30" duration="6" complete="0" thirdDate="2026-01-30" thirdDate-constraint="1" expand="true"/>
+        <task id="2" uid="8b02d076f5e44956a44df2ce3ffede22" name="Requirement gathering" meeting="false" start="2026-02-09" duration="5" complete="0" expand="true"/>
+        <task id="3" uid="a19a296c279643f7b8b434c4449c66e5" name="Conduct research on existing hate speech detection systems" meeting="false" start="2026-02-16" duration="10" complete="0" expand="true"/>
+        <task id="4" uid="abd834f30a454f679587e499d1812530" name="Choosing requirements and assemble all components" meeting="false" start="2026-03-02" duration="5" complete="0" expand="true"/>
+        <task id="5" uid="e41ac8b4157c43d0a8977a87e1f97b83" name="Design system architecture" meeting="false" start="2026-03-23" duration="1" complete="0" expand="true"/>
+        <task id="6" uid="94fe4a452fd948f4a61e625d0b26fdb1" name="Data collection through web scraping" meeting="false" start="2026-04-16" duration="21" complete="0" expand="true"/>
+        <task id="7" uid="8141030da4a146679cf6803372b571e5" name="Data annotation" meeting="false" start="2026-04-15" duration="1" complete="0" expand="true"/>
+        <task id="8" uid="b4b9a066b3d24cfc9d7c2b5e6c5811b4" name="Data preprocessing and feature extraction" meeting="false" start="2026-05-26" duration="1" complete="0" expand="true"/>
+        <task id="9" uid="bc99e3b3b73e41448f338cd5890b9cc6" name="Train and evaluate ML models" meeting="false" start="2026-06-02" duration="1" complete="0" expand="true"/>
+        <task id="10" uid="e524dced2b7b412a9938af87028ec458" name="Build backend API and frontend interface" meeting="false" start="2026-06-29" duration="1" complete="0" expand="true"/>
+        <task id="11" uid="275039a2008d4b6e921b3154e970d611" name="Report writing and defense preparation" meeting="false" start="2026-06-25" duration="1" complete="0" expand="true"/>
+    </tasks>
+    <resources/>
+    <allocations/>
+    <vacations/>
+    <previous/>
+    <roles roleset-name="Default"/>
+</project>
