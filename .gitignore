@@ -6,7 +6,9 @@ __pycache__/
 token.txt 
 moderation.db 
 *.db 
-models/ 
+models/*
+!models/best_model.pkl
+!models/tfidf_vectorizer.pkl
 data/ 
 *.ipynb 
 *.pdf 

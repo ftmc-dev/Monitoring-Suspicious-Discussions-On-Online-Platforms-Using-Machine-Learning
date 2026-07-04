@@ -507,20 +507,19 @@ def predict():
             # ── Layer 2: ML model (Logistic Regression) ──
             X = vectorizer.transform([text_lower])
             probabilities = model.predict_proba(X)[0]
-            classes = list(model.classes_)  # e.g. ['hate_speech', 'normal', 'offensive']
-            scores = dict(zip(classes, probabilities))
 
-            hate_score    = float(scores.get("hate_speech", 0))
-            offensive_score = float(scores.get("offensive", 0))
-            normal_score  = float(scores.get("normal", 0))
+            # Confirmed mapping: 0=Normal, 1=Offensive, 2=Hate Speech
+            normal_score    = float(probabilities[0])
+            offensive_score = float(probabilities[1])
+            hate_score      = float(probabilities[2])
 
-            predicted_class = classes[int(probabilities.argmax())]
+            predicted_index = int(probabilities.argmax())
             label_map = {
-                "normal":      (0, "none",   "Normal"),
-                "offensive":   (1, "medium", "Offensive"),
-                "hate_speech": (2, "high",   "Hate Speech")
+                0: (0, "none",   "Normal"),
+                1: (1, "medium", "Offensive"),
+                2: (2, "high",   "Hate Speech")
             }
-            label_id, warning_level, prediction = label_map[predicted_class]
+            label_id, warning_level, prediction = label_map[predicted_index]
             detection_method = "ml_model"
 
         result = {
