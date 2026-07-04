@@ -2,7 +2,7 @@
 # HATE SPEECH DETECTION API - Flask with Database
 # ======================================================================
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, send_from_directory, jsonify
 from flask_cors import CORS
 import sqlite3
 import os
@@ -588,6 +588,14 @@ def predict():
     except Exception as e:
         print(f"❌ Prediction error: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route("/admin")
+def admin_dashboard():
+    return send_from_directory("api/templates", "admin.html")
+
+@app.route("/test")
+def test_page():
+    return send_from_directory("api/templates", "index.html")
 
 # ── Run ───────────────────────────────────────────────────────────────
 
