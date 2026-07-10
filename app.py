@@ -562,14 +562,14 @@ def predict():
                prediction = "Normal"
                detection_method = "ml_model_low_confidence"
             else:
-              predicted_index = int(probabilities.argmax())
-              label_map = {
-                0: (0, "none",   "Normal"),
-                1: (1, "medium", "Offensive"),
-                2: (2, "high",   "Hate Speech")
-            }
-            label_id, warning_level, prediction = label_map[predicted_index]
-            detection_method = "ml_model"
+               predicted_index = int(probabilities.argmax())
+               label_map = {
+                  0: (0, "none",   "Normal"),
+                  1: (1, "medium", "Offensive"),
+                  2: (2, "high",   "Hate Speech")
+               }
+               label_id, warning_level, prediction = label_map[predicted_index]
+               detection_method = "ml_model"
 
         result = {
             "prediction": prediction,
