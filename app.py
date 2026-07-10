@@ -524,12 +524,24 @@ def predict():
         hate_keywords = ['kill all', 'exterminate', 'subhuman']
         matched_keyword = next((kw for kw in hate_keywords if kw in text_lower), None)
 
+        offensive_keywords = ['stupid', 'dumb', 'idiot', 'moron', 'fool', 'shut up']
+        matched_offensive = next((kw for kw in offensive_keywords if kw in text_lower), None)
+
         if matched_keyword:
             label_id = 2
             warning_level = "high"
             prediction = "Hate Speech"
             hate_score = 1.0
             offensive_score = 0.0
+            normal_score = 0.0
+            detection_method = "rule_layer"
+
+        elif matched_offensive:
+            label_id = 1
+            warning_level = "medium"
+            prediction = "Offensive"
+            hate_score = 0.0
+            offensive_score = 1.0
             normal_score = 0.0
             detection_method = "rule_layer"
 
