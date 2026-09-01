@@ -524,24 +524,12 @@ def predict():
         hate_keywords = ['kill all', 'exterminate', 'subhuman']
         matched_keyword = next((kw for kw in hate_keywords if kw in text_lower), None)
 
-        offensive_keywords = ['stupid', 'dumb', 'idiot', 'moron', 'fool', 'shut up']
-        matched_offensive = next((kw for kw in offensive_keywords if kw in text_lower), None)
-
         if matched_keyword:
             label_id = 2
             warning_level = "high"
             prediction = "Hate Speech"
             hate_score = 1.0
             offensive_score = 0.0
-            normal_score = 0.0
-            detection_method = "rule_layer"
-
-        elif matched_offensive:
-            label_id = 1
-            warning_level = "medium"
-            prediction = "Offensive"
-            hate_score = 0.0
-            offensive_score = 1.0
             normal_score = 0.0
             detection_method = "rule_layer"
 
@@ -562,14 +550,14 @@ def predict():
                prediction = "Normal"
                detection_method = "ml_model_low_confidence"
             else:
-               predicted_index = int(probabilities.argmax())
-               label_map = {
-                  0: (0, "none",   "Normal"),
-                  1: (1, "medium", "Offensive"),
-                  2: (2, "high",   "Hate Speech")
-               }
-               label_id, warning_level, prediction = label_map[predicted_index]
-               detection_method = "ml_model"
+              predicted_index = int(probabilities.argmax())
+              label_map = {
+                0: (0, "none",   "Normal"),
+                1: (1, "medium", "Offensive"),
+                2: (2, "high",   "Hate Speech")
+            }
+            label_id, warning_level, prediction = label_map[predicted_index]
+            detection_method = "ml_model"
 
         result = {
             "prediction": prediction,

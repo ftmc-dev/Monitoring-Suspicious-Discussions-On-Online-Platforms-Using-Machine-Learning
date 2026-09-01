@@ -216,6 +216,17 @@ async def on_message(message):
             )
             action_taken = "⚠️ **Warning sent** — first high strike"
 
+        # Sync to API
+        await api_sync_strike(
+            str(message.author.id),
+            str(message.author),
+            message.content,
+            "high",
+            action_taken,
+            float(confidence.get("hate_speech", 0)),
+            float(confidence.get("offensive", 0))
+        )
+
         # 🔴 Send notification in the channel (but NOT the original message)
         try:
             await message.channel.send(
@@ -254,6 +265,17 @@ async def on_message(message):
 
     # ── MEDIUM RISK ───────────────────────────────────────────────────
     elif warning_level == "medium":
+        # Sync to API
+        await api_sync_strike(
+            str(message.author.id),
+            str(message.author),
+            message.content,
+            "medium",
+            "warning",
+            float(confidence.get("hate_speech", 0)),
+            float(confidence.get("offensive", 0))
+        )
+
         # ⚠️ Send DM warning
         dm_sent = await send_dm(message.author,
             f"⚠️ **WARNING**\n"
